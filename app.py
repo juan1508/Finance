@@ -475,32 +475,184 @@ atr_val=last.get("atr", price_now*0.02)
 proj_tp=round(price_now+atr_val*2.5,2)
 proj_sl=round(price_now-atr_val*1.5,2)
 
-# ─── ALERTAS AUTOMÁTICAS para posiciones abiertas ────────────────────────────
-cfg=st.session_state.email_config
-if cfg["active"] and cfg["to"] and cfg["from"] and cfg["pass"]:
-    for t in st.session_state.trades:
-        if t["status"]!="ABIERTA": continue
+# ─── ESCÁNER AUTOMÁTICO COMPLETO ─────────────────────────────────────────────
+# Inicializar estado del escáner
+if "last_scan_time"    not in st.session_state: st.session_state.last_scan_time    = 0
+if "scanner_results"   not in st.session_state: st.session_state.scanner_results   = []
+if "scanned_signals"   not in st.session_state: st.session_state.scanned_signals   = {}  # symbol -> last signal sent
+
+SCAN_INTERVAL = 300  # segundos entre escaneos (5 minutos)
+
+def build_scanner_email(results_buy, results_sell, results_tp, results_sl):
+    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+    def rows_html(items, color, icon):
+        if not items: return f"<tr><td colspan='4' style='color:#4b5563;font-size:11px;padding:8px;text-align:center;'>Sin señales en este momento</td></tr>"
+        html = ""
+        for sym, price, strength, reason in items:
+            html += f"""<tr>
+              <td style='padding:8px;color:#fff;font-family:monospace;font-weight:700;'>{icon} {sym}</td>
+              <td style='padding:8px;color:{color};font-family:monospace;'>${price:,.2f}</td>
+              <td style='padding:8px;color:{color};font-family:monospace;'>{strength}%</td>
+              <td style='padding:8px;color:#6b7280;font-size:10px;'>{reason}</td>
+            </tr>"""
+        return html
+
+    buy_rows  = rows_html(results_buy,  "#00ff9d", "🟢")
+    sell_rows = rows_html(results_sell, "#ff4d6d", "🔴")
+    tp_rows   = rows_html(results_tp,   "#00ff9d", "🎯")
+    sl_rows   = rows_html(results_sl,   "#ff4d6d", "🛑")
+
+    total = len(results_buy) + len(results_sell) + len(results_tp) + len(results_sl)
+
+    return f"""
+    <div style="background:#060a0f;font-family:Arial,sans-serif;padding:28px;max-width:650px;margin:0 auto;border-radius:12px;border:1px solid #1f2937;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:32px;">📊</div>
+        <div style="color:#00ff9d;font-size:20px;font-weight:700;letter-spacing:2px;margin-top:6px;">QUANTUM TRADE</div>
+        <div style="color:#4b5563;font-size:10px;letter-spacing:3px;">REPORTE AUTOMÁTICO DE MERCADO</div>
+        <div style="color:#374151;font-size:11px;margin-top:4px;">{now} · {total} señales detectadas</div>
+      </div>
+
+      {"" if not results_tp and not results_sl else f'''
+      <div style="background:#ff4d6d10;border:1px solid #ff4d6d40;border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="color:#ff4d6d;font-weight:700;font-size:13px;margin-bottom:10px;">⚡ TUS POSICIONES — ACCIÓN REQUERIDA</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr style="border-bottom:1px solid #1f2937;">
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">ACCIÓN</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">PRECIO</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">SEÑAL</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">DETALLE</th>
+          </tr>
+          {tp_rows}{sl_rows}
+        </table>
+      </div>'''}
+
+      <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:14px;margin-bottom:12px;">
+        <div style="color:#00ff9d;font-weight:700;font-size:13px;margin-bottom:10px;">🟢 OPORTUNIDADES DE COMPRA</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr style="border-bottom:1px solid #1f2937;">
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">ACCIÓN</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">PRECIO</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">FUERZA</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">RAZÓN</th>
+          </tr>
+          {buy_rows}
+        </table>
+      </div>
+
+      <div style="background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="color:#ff4d6d;font-weight:700;font-size:13px;margin-bottom:10px;">🔴 SEÑALES DE VENTA / PRECAUCIÓN</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr style="border-bottom:1px solid #1f2937;">
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">ACCIÓN</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">PRECIO</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">FUERZA</th>
+            <th style="color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;letter-spacing:1px;">RAZÓN</th>
+          </tr>
+          {sell_rows}
+        </table>
+      </div>
+
+      <div style="background:#ff4d6d10;border:1px solid #ff4d6d30;border-radius:6px;padding:10px 14px;font-size:10px;color:#6b7280;">
+        ⚠️ Alertas generadas por análisis técnico automático. No constituyen asesoría financiera.
+      </div>
+    </div>
+    """
+
+def run_full_scanner(cfg, portfolio_trades):
+    """Escanea todas las acciones y posiciones abiertas. Retorna resultados y envía correo."""
+    results_buy  = []  # (symbol, price, strength, reason)
+    results_sell = []
+    results_tp   = []  # posiciones abiertas que tocaron TP
+    results_sl   = []  # posiciones abiertas que tocaron SL
+
+    prev_signals = st.session_state.scanned_signals
+
+    # ── 1. Escanear TODAS las acciones ────────────────────────────────────────
+    for sym in ALL_STOCKS.keys():
         try:
-            cp,_=fetch_quick_price(t["symbol"])
+            df = fetch_data(sym, "3mo", "1d")
+            if df.empty or len(df) < 50: continue
+            df  = add_indicators(df)
+            sig = generate_signal(df)
+            cp  = df["close"].iloc[-1]
+
+            prev_sig = prev_signals.get(sym, "NEUTRAL")
+
+            # Solo alertar si la señal CAMBIÓ respecto al último escaneo
+            if sig["signal"] == "COMPRAR" and sig["strength"] >= 65 and prev_sig != "COMPRAR":
+                last_row = df.iloc[-1]
+                reasons  = " · ".join([r.replace("✅ ","").replace("❌ ","").replace("➖ ","") for r in sig["reasons"][:2]])
+                results_buy.append((sym, cp, sig["strength"], reasons))
+
+            elif sig["signal"] == "VENDER" and sig["strength"] <= 35 and prev_sig != "VENDER":
+                last_row = df.iloc[-1]
+                reasons  = " · ".join([r.replace("✅ ","").replace("❌ ","").replace("➖ ","") for r in sig["reasons"][:2]])
+                results_sell.append((sym, cp, sig["strength"], reasons))
+
+            # Actualizar estado
+            st.session_state.scanned_signals[sym] = sig["signal"]
+
+        except: continue
+
+    # ── 2. Revisar posiciones abiertas ────────────────────────────────────────
+    for t in portfolio_trades:
+        if t["status"] != "ABIERTA": continue
+        try:
+            cp, _ = fetch_quick_price(t["symbol"])
             if cp is None: continue
-            unreal_pct=(cp-t["buy_price"])/t["buy_price"]*100
-            # Alerta TP
-            if cp>=t["tp_price"] and not t.get("alert_sell_sent"):
-                pnl=(cp-t["buy_price"])*t["shares"]
-                html=build_sell_email(t["symbol"],t["buy_price"],cp,pnl,unreal_pct,"🎯 Take Profit alcanzado")
-                ok,msg=send_email_alert(cfg["to"],cfg["from"],cfg["pass"],f"🎯 TAKE PROFIT — {t['symbol']} +{unreal_pct:.1f}%",html)
-                if ok:
-                    t["alert_sell_sent"]=True
-                    st.session_state.alert_log.append({"time":datetime.now().strftime("%H:%M"),"msg":f"✅ Alerta TP enviada para {t['symbol']}","color":"#00ff9d"})
-            # Alerta SL
-            elif cp<=t["sl_price"] and not t.get("alert_sell_sent"):
-                pnl=(cp-t["buy_price"])*t["shares"]
-                html=build_sell_email(t["symbol"],t["buy_price"],cp,pnl,unreal_pct,"🛑 Stop Loss alcanzado")
-                ok,msg=send_email_alert(cfg["to"],cfg["from"],cfg["pass"],f"🛑 STOP LOSS — {t['symbol']} {unreal_pct:.1f}%",html)
-                if ok:
-                    t["alert_sell_sent"]=True
-                    st.session_state.alert_log.append({"time":datetime.now().strftime("%H:%M"),"msg":f"🛑 Alerta SL enviada para {t['symbol']}","color":"#ff4d6d"})
-        except: pass
+            unreal_pct = (cp - t["buy_price"]) / t["buy_price"] * 100
+
+            if cp >= t["tp_price"] and not t.get("alert_sell_sent"):
+                pnl = (cp - t["buy_price"]) * t["shares"]
+                results_tp.append((t["symbol"], cp, round(unreal_pct, 1), f"TP alcanzado · P&L +${pnl:,.2f}"))
+                t["alert_sell_sent"] = True
+
+            elif cp <= t["sl_price"] and not t.get("alert_sell_sent"):
+                pnl = (cp - t["buy_price"]) * t["shares"]
+                results_sl.append((t["symbol"], cp, round(unreal_pct, 1), f"SL alcanzado · P&L ${pnl:,.2f}"))
+                t["alert_sell_sent"] = True
+        except: continue
+
+    # ── 3. Guardar resultados en session state ────────────────────────────────
+    all_results = []
+    for sym, price, strength, reason in results_buy:
+        all_results.append({"type":"COMPRAR","symbol":sym,"price":price,"strength":strength,"reason":reason,"color":"#00ff9d","time":datetime.now().strftime("%H:%M")})
+    for sym, price, strength, reason in results_sell:
+        all_results.append({"type":"VENDER","symbol":sym,"price":price,"strength":strength,"reason":reason,"color":"#ff4d6d","time":datetime.now().strftime("%H:%M")})
+    for sym, price, strength, reason in results_tp:
+        all_results.append({"type":"TP ✅","symbol":sym,"price":price,"strength":strength,"reason":reason,"color":"#00ff9d","time":datetime.now().strftime("%H:%M")})
+    for sym, price, strength, reason in results_sl:
+        all_results.append({"type":"SL 🛑","symbol":sym,"price":price,"strength":strength,"reason":reason,"color":"#ff4d6d","time":datetime.now().strftime("%H:%M")})
+
+    if all_results:
+        st.session_state.scanner_results = all_results + st.session_state.scanner_results
+        st.session_state.scanner_results = st.session_state.scanner_results[:50]  # keep last 50
+
+    # ── 4. Enviar correo si hay señales nuevas ────────────────────────────────
+    total_new = len(results_buy) + len(results_sell) + len(results_tp) + len(results_sl)
+    if total_new > 0 and cfg["active"] and cfg["to"] and cfg["from"] and cfg["pass"]:
+        html = build_scanner_email(results_buy, results_sell, results_tp, results_sl)
+        subject = f"📊 Quantum Trade — {total_new} señal(es) detectada(s) · {datetime.now().strftime('%H:%M')}"
+        ok, msg = send_email_alert(cfg["to"], cfg["from"], cfg["pass"], subject, html)
+        if ok:
+            st.session_state.alert_log.append({
+                "time": datetime.now().strftime("%H:%M"),
+                "msg": f"📧 Reporte enviado — {total_new} señales ({len(results_buy)} compra, {len(results_sell)} venta, {len(results_tp)+len(results_sl)} posiciones)",
+                "color": "#00ff9d"
+            })
+
+    st.session_state.last_scan_time = time.time()
+    return all_results
+
+# ── Ejecutar escáner si pasaron 5 minutos ─────────────────────────────────────
+cfg = st.session_state.email_config
+tiempo_desde_scan = time.time() - st.session_state.last_scan_time
+debe_escanear     = tiempo_desde_scan >= SCAN_INTERVAL
+
+if debe_escanear and cfg.get("active") and cfg.get("to") and cfg.get("from") and cfg.get("pass"):
+    with st.spinner("🔍 Escaneando mercado..."):
+        run_full_scanner(cfg, st.session_state.trades)
 
 # ─── HEADER — variables pre-calculadas para evitar f-string con ternarios ────
 sc           = sig["color"]
@@ -1056,6 +1208,95 @@ with t6:
             for log in reversed(st.session_state.alert_log[-10:]):
                 st.markdown(f"<div style='background:#060a0f;border-left:3px solid {log['color']};padding:6px 10px;margin-bottom:4px;font-size:11px;color:#6b7280;font-family:Space Mono;'>[{log['time']}] {log['msg']}</div>", unsafe_allow_html=True)
 
+    # ── Panel del escáner automático ─────────────────────────────────────────
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("### 🔍 Escáner Automático — Todas las acciones")
+
+    tiempo_restante = max(0, SCAN_INTERVAL - (time.time() - st.session_state.last_scan_time))
+    minutos = int(tiempo_restante // 60)
+    segundos = int(tiempo_restante % 60)
+    scan_pct = int((1 - tiempo_restante / SCAN_INTERVAL) * 100)
+    ultimo_scan = datetime.fromtimestamp(st.session_state.last_scan_time).strftime("%H:%M:%S") if st.session_state.last_scan_time > 0 else "Nunca"
+
+    scanner_active = cfg.get("active") and cfg.get("to") and cfg.get("from") and cfg.get("pass")
+    scanner_color  = "#00ff9d" if scanner_active else "#4b5563"
+    scanner_label  = "ACTIVO" if scanner_active else "INACTIVO — configura tu correo primero"
+
+    st.markdown(f"""
+    <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:20px;margin-bottom:16px;'>
+      <div style='display:flex;align-items:center;gap:8px;margin-bottom:16px;'>
+        <div style='width:10px;height:10px;border-radius:50%;background:{scanner_color};
+                    {"box-shadow:0 0 10px "+scanner_color if scanner_active else ""};'></div>
+        <span style='color:{scanner_color};font-family:Space Mono;font-size:13px;font-weight:700;'>ESCÁNER {scanner_label}</span>
+      </div>
+
+      <div style='display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;'>
+        <div style='background:#060a0f;border:1px solid #1f2937;border-radius:8px;padding:12px;text-align:center;'>
+          <div style='color:#4b5563;font-size:9px;letter-spacing:1px;'>ACCIONES VIGILADAS</div>
+          <div style='color:#00ff9d;font-family:Space Mono;font-size:22px;font-weight:700;margin-top:4px;'>{len(ALL_STOCKS)}</div>
+          <div style='color:#4b5563;font-size:10px;'>en tiempo real</div>
+        </div>
+        <div style='background:#060a0f;border:1px solid #1f2937;border-radius:8px;padding:12px;text-align:center;'>
+          <div style='color:#4b5563;font-size:9px;letter-spacing:1px;'>PRÓXIMO ESCANEO</div>
+          <div style='color:#ffd60a;font-family:Space Mono;font-size:22px;font-weight:700;margin-top:4px;'>{minutos:02d}:{segundos:02d}</div>
+          <div style='color:#4b5563;font-size:10px;'>cada 5 minutos</div>
+        </div>
+        <div style='background:#060a0f;border:1px solid #1f2937;border-radius:8px;padding:12px;text-align:center;'>
+          <div style='color:#4b5563;font-size:9px;letter-spacing:1px;'>ÚLTIMO ESCANEO</div>
+          <div style='color:#9ca3af;font-family:Space Mono;font-size:18px;font-weight:700;margin-top:4px;'>{ultimo_scan}</div>
+          <div style='color:#4b5563;font-size:10px;'>señales: {len(st.session_state.scanner_results)}</div>
+        </div>
+      </div>
+
+      <div style='background:#1f2937;border-radius:4px;height:6px;margin-bottom:8px;'>
+        <div style='background:linear-gradient(90deg,#00ff9d,#ffd60a);border-radius:4px;height:6px;width:{scan_pct}%;transition:width 1s;'></div>
+      </div>
+      <div style='color:#4b5563;font-size:10px;text-align:right;'>{scan_pct}% completado</div>
+
+      <div style='margin-top:12px;padding-top:12px;border-top:1px solid #1f2937;font-size:11px;color:#6b7280;line-height:1.9;'>
+        🟢 Alerta de <strong style='color:#00ff9d;'>COMPRA</strong> cuando señal ≥ 65% y RSI &lt; 40 o cruce alcista de medias<br>
+        🔴 Alerta de <strong style='color:#ff4d6d;'>VENTA</strong> cuando señal ≤ 35% o sobrecompra extrema<br>
+        🎯 Alerta de <strong style='color:#ffd60a;'>TP/SL</strong> cuando tus posiciones abiertas tocan el precio objetivo<br>
+        📧 Solo envía correo cuando la señal <strong style='color:#fff;'>CAMBIA</strong> — no spamea con la misma señal dos veces
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Botón escaneo manual
+    col_scan1, col_scan2 = st.columns([1, 3])
+    with col_scan1:
+        if st.button("🔍 Escanear ahora", key="scan_now"):
+            if scanner_active:
+                with st.spinner("Escaneando todas las acciones..."):
+                    results = run_full_scanner(cfg, st.session_state.trades)
+                if results:
+                    st.success(f"✅ {len(results)} señales detectadas. Correo enviado.")
+                else:
+                    st.info("Sin señales nuevas en este momento.")
+            else:
+                st.warning("Configura y activa tu correo primero.")
+
+    # ── Últimas señales detectadas ────────────────────────────────────────────
+    if st.session_state.scanner_results:
+        st.markdown("<br>**📋 Últimas señales detectadas:**", unsafe_allow_html=False)
+        for r in st.session_state.scanner_results[:15]:
+            ic = "🟢" if r["type"] == "COMPRAR" else ("🔴" if r["type"] == "VENDER" else ("🎯" if "TP" in r["type"] else "🛑"))
+            st.markdown(f"""
+            <div style='background:#060a0f;border-left:3px solid {r["color"]};border-radius:0 6px 6px 0;
+                        padding:8px 14px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;'>
+              <div>
+                <span style='color:#fff;font-family:Space Mono;font-weight:700;'>{ic} {r["symbol"]}</span>
+                <span style='color:{r["color"]};font-family:Space Mono;font-size:11px;margin-left:10px;'>{r["type"]}</span>
+                <span style='color:#4b5563;font-size:10px;margin-left:8px;'>${r["price"]:,.2f} · fuerza {r["strength"]}%</span>
+                <div style='color:#6b7280;font-size:10px;margin-top:2px;'>{r["reason"]}</div>
+              </div>
+              <span style='color:#374151;font-family:Space Mono;font-size:10px;'>{r["time"]}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        if st.button("🗑️ Limpiar historial de señales", key="clear_scan"):
+            st.session_state.scanner_results = []; st.rerun()
+
 # ── TAB 7: BROKERS ────────────────────────────────────────────────────────────
 with t7:
     st.markdown("### 🏦 Brokers Recomendados — Empieza con poco, crece seguro")
@@ -1156,5 +1397,8 @@ with t7:
     </div>
     """, unsafe_allow_html=True)
 
+# ─── AUTO REFRESH ─────────────────────────────────────────────────────────────
+# Refresca cada 30s para actualizar el contador del escáner y detectar señales
 if auto_ref:
-    time.sleep(60); st.rerun()
+    time.sleep(30)
+    st.rerun()
