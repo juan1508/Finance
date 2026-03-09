@@ -39,7 +39,6 @@ div[data-testid="stExpander"]{background:#0d1117!important;border:1px solid #1f2
 # UNIVERSO COMPLETO — 120+ ACTIVOS
 # ═══════════════════════════════════════════════════════════════════════════════
 ALL_ASSETS = {
-    # ── ACCIONES USA — TECNOLOGÍA ──────────────────────────────────────────
     "AAPL":  {"name":"Apple",              "tipo":"Acción","sector":"Tecnología",   "riesgo":"Bajo",   "div":True,  "broker":"XTB / IBKR",   "min_usd":1,  "desc":"La empresa más grande del mundo."},
     "MSFT":  {"name":"Microsoft",          "tipo":"Acción","sector":"Tecnología",   "riesgo":"Bajo",   "div":True,  "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Nube Azure + IA. Crecimiento constante."},
     "GOOGL": {"name":"Alphabet (Google)",  "tipo":"Acción","sector":"Tecnología",   "riesgo":"Bajo",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Dominio en búsquedas y publicidad."},
@@ -58,7 +57,6 @@ ALL_ASSETS = {
     "SHOP":  {"name":"Shopify",            "tipo":"Acción","sector":"Tecnología",   "riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"E-commerce para PYMES. Alto crecimiento."},
     "SNOW":  {"name":"Snowflake",          "tipo":"Acción","sector":"Tecnología",   "riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Data cloud. Alto potencial."},
     "PLTR":  {"name":"Palantir",           "tipo":"Acción","sector":"Tecnología",   "riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"IA para gobiernos y empresas."},
-    # ── ACCIONES USA — FINANZAS ────────────────────────────────────────────
     "JPM":   {"name":"JPMorgan Chase",     "tipo":"Acción","sector":"Finanzas",     "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Banco más grande de EEUU."},
     "V":     {"name":"Visa",               "tipo":"Acción","sector":"Finanzas",     "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Red de pagos global. Muy estable."},
     "MA":    {"name":"Mastercard",         "tipo":"Acción","sector":"Finanzas",     "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Igual de estable que Visa."},
@@ -67,14 +65,12 @@ ALL_ASSETS = {
     "BAC":   {"name":"Bank of America",    "tipo":"Acción","sector":"Finanzas",     "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Segundo banco más grande de EEUU."},
     "AXP":   {"name":"American Express",   "tipo":"Acción","sector":"Finanzas",     "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Tarjetas premium. Clientes fieles."},
     "BLK":   {"name":"BlackRock",          "tipo":"Acción","sector":"Finanzas",     "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Gestora de activos más grande del mundo."},
-    # ── ACCIONES USA — SALUD ──────────────────────────────────────────────
     "JNJ":   {"name":"Johnson & Johnson",  "tipo":"Acción","sector":"Salud",        "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"60+ años aumentando dividendo."},
     "UNH":   {"name":"UnitedHealth",       "tipo":"Acción","sector":"Salud",        "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Seguro médico más grande de EEUU."},
     "PFE":   {"name":"Pfizer",             "tipo":"Acción","sector":"Salud",        "riesgo":"Medio",  "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Farmacéutica gigante. Precio bajo."},
     "ABBV":  {"name":"AbbVie",             "tipo":"Acción","sector":"Salud",        "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Farmacéutica con dividendo alto."},
     "MRK":   {"name":"Merck",              "tipo":"Acción","sector":"Salud",        "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Keytruda anti-cáncer. Muy sólida."},
     "LLY":   {"name":"Eli Lilly",          "tipo":"Acción","sector":"Salud",        "riesgo":"Medio",  "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Medicamentos para diabetes y obesidad."},
-    # ── ACCIONES USA — CONSUMO ─────────────────────────────────────────────
     "WMT":   {"name":"Walmart",            "tipo":"Acción","sector":"Consumo",      "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Retailer #1 del mundo. Resiste crisis."},
     "COST":  {"name":"Costco",             "tipo":"Acción","sector":"Consumo",      "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Membresías = ingresos recurrentes."},
     "KO":    {"name":"Coca-Cola",          "tipo":"Acción","sector":"Consumo",      "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"60+ años aumentando dividendo."},
@@ -83,12 +79,10 @@ ALL_ASSETS = {
     "PG":    {"name":"Procter & Gamble",   "tipo":"Acción","sector":"Consumo",      "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Productos del hogar. Ultra estable."},
     "NKE":   {"name":"Nike",               "tipo":"Acción","sector":"Consumo",      "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Marca deportiva global #1."},
     "SBUX":  {"name":"Starbucks",          "tipo":"Acción","sector":"Consumo",      "riesgo":"Medio",  "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Café premium global."},
-    # ── ACCIONES USA — ENERGÍA ─────────────────────────────────────────────
     "XOM":   {"name":"ExxonMobil",         "tipo":"Acción","sector":"Energía",      "riesgo":"Medio",  "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Petróleo gigante. Dividendo histórico."},
     "CVX":   {"name":"Chevron",            "tipo":"Acción","sector":"Energía",      "riesgo":"Medio",  "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Petróleo y gas. Muy sólida."},
     "NEE":   {"name":"NextEra Energy",     "tipo":"Acción","sector":"Energía",      "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Energía renovable #1 del mundo."},
     "ENPH":  {"name":"Enphase Energy",     "tipo":"Acción","sector":"Energía",      "riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Solar. Alto potencial largo plazo."},
-    # ── ACCIONES INTERNACIONALES ──────────────────────────────────────────
     "ASML":  {"name":"ASML Holding",       "tipo":"Acción","sector":"Tecnología",   "riesgo":"Medio",  "div":True,  "broker":"IBKR / Saxo",  "min_usd":1,  "desc":"Máquinas para chips. Monopolio total."},
     "TSM":   {"name":"Taiwan Semiconductor","tipo":"Acción","sector":"Tecnología",  "riesgo":"Medio",  "div":True,  "broker":"IBKR / Saxo",  "min_usd":1,  "desc":"Fabrica los chips de NVDA y AAPL."},
     "BABA":  {"name":"Alibaba",            "tipo":"Acción","sector":"Tecnología",   "riesgo":"Alto",   "div":False, "broker":"IBKR / Saxo",  "min_usd":1,  "desc":"Amazon de China. Precio muy castigado."},
@@ -96,11 +90,9 @@ ALL_ASSETS = {
     "TM":    {"name":"Toyota",             "tipo":"Acción","sector":"Automotriz",   "riesgo":"Bajo",   "div":True,  "broker":"IBKR / Saxo",  "min_usd":1,  "desc":"Mayor fabricante de autos del mundo."},
     "SONY":  {"name":"Sony Group",         "tipo":"Acción","sector":"Tecnología",   "riesgo":"Medio",  "div":True,  "broker":"IBKR / Saxo",  "min_usd":1,  "desc":"Gaming + entretenimiento + sensores."},
     "NVO":   {"name":"Novo Nordisk",       "tipo":"Acción","sector":"Salud",        "riesgo":"Bajo",   "div":True,  "broker":"IBKR / Saxo",  "min_usd":1,  "desc":"Ozempic (diabetes/obesidad). Líder."},
-    # ── COLOMBIA EN NYSE ──────────────────────────────────────────────────
     "EC":    {"name":"Ecopetrol",          "tipo":"Acción","sector":"Energía",      "riesgo":"Medio",  "div":True,  "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Petrolera colombiana en NYSE. Dividendo alto."},
     "CIB":   {"name":"Bancolombia",        "tipo":"Acción","sector":"Finanzas",     "riesgo":"Bajo",   "div":True,  "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Banco más grande de Colombia en NYSE."},
     "GXO":   {"name":"GXO Logistics",      "tipo":"Acción","sector":"Logística",    "riesgo":"Medio",  "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Logística global en crecimiento."},
-    # ── ETFs ──────────────────────────────────────────────────────────────
     "SPY":   {"name":"S&P 500 ETF",        "tipo":"ETF",   "sector":"ETF Broad",   "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Las 500 mejores empresas de EEUU. IDEAL PRINCIPIANTES."},
     "QQQ":   {"name":"Nasdaq 100 ETF",     "tipo":"ETF",   "sector":"ETF Broad",   "riesgo":"Medio",  "div":False, "broker":"XTB / Schwab", "min_usd":1,  "desc":"Top 100 tecnológicas. Alto crecimiento."},
     "VTI":   {"name":"Total Market ETF",   "tipo":"ETF",   "sector":"ETF Broad",   "riesgo":"Bajo",   "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Todo el mercado americano."},
@@ -112,7 +104,6 @@ ALL_ASSETS = {
     "EEM":   {"name":"Emerging Markets ETF","tipo":"ETF",  "sector":"ETF Global",  "riesgo":"Medio", "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Mercados emergentes incluyendo LATAM."},
     "IWM":   {"name":"Russell 2000 ETF",   "tipo":"ETF",   "sector":"ETF Broad",   "riesgo":"Medio", "div":True,  "broker":"XTB / Schwab", "min_usd":1,  "desc":"Pequeñas empresas USA. Mayor potencial."},
     "ARKK":  {"name":"ARK Innovation ETF", "tipo":"ETF",   "sector":"ETF Tech",    "riesgo":"Alto",  "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Innovación disruptiva. Alto riesgo/retorno."},
-    # ── CRIPTOMONEDAS ─────────────────────────────────────────────────────
     "BTC-USD":  {"name":"Bitcoin",         "tipo":"Cripto","sector":"Cripto L1",   "riesgo":"Alto",   "div":False, "broker":"Binance / Coinbase","min_usd":1,"desc":"La cripto original. Reserva de valor digital."},
     "ETH-USD":  {"name":"Ethereum",        "tipo":"Cripto","sector":"Cripto L1",   "riesgo":"Alto",   "div":False, "broker":"Binance / Coinbase","min_usd":1,"desc":"Smart contracts. Base del ecosistema DeFi."},
     "BNB-USD":  {"name":"BNB",             "tipo":"Cripto","sector":"Cripto L1",   "riesgo":"Alto",   "div":False, "broker":"Binance",           "min_usd":1,"desc":"Token de Binance. Descuentos en comisiones."},
@@ -123,7 +114,6 @@ ALL_ASSETS = {
     "MATIC-USD":{"name":"Polygon",         "tipo":"Cripto","sector":"Cripto L2",   "riesgo":"Alto",   "div":False, "broker":"Binance / Coinbase","min_usd":1,"desc":"Escalabilidad de Ethereum. Capa 2."},
     "AVAX-USD": {"name":"Avalanche",       "tipo":"Cripto","sector":"Cripto L1",   "riesgo":"Alto",   "div":False, "broker":"Binance / Coinbase","min_usd":1,"desc":"Blockchain rápida. Compite con Solana."},
     "LINK-USD": {"name":"Chainlink",       "tipo":"Cripto","sector":"Cripto Infra","riesgo":"Alto",   "div":False, "broker":"Binance / Coinbase","min_usd":1,"desc":"Oráculos blockchain. Infraestructura DeFi."},
-    # ── DIVISAS / FOREX ───────────────────────────────────────────────────
     "EURUSD=X": {"name":"Euro / Dólar",    "tipo":"Forex", "sector":"Forex Major", "riesgo":"Bajo",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"El par más negociado del mundo."},
     "GBPUSD=X": {"name":"Libra / Dólar",   "tipo":"Forex", "sector":"Forex Major", "riesgo":"Bajo",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Libra esterlina vs dólar."},
     "JPYUSD=X": {"name":"Yen / Dólar",     "tipo":"Forex", "sector":"Forex Major", "riesgo":"Bajo",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Yen japonés. Activo refugio."},
@@ -132,7 +122,6 @@ ALL_ASSETS = {
     "USDMXN=X": {"name":"Dólar / Peso MX", "tipo":"Forex", "sector":"Forex LATAM", "riesgo":"Medio",  "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Dólar vs Peso mexicano."},
     "USDCHF=X": {"name":"Dólar / Franco CH","tipo":"Forex","sector":"Forex Major", "riesgo":"Bajo",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Franco suizo. Activo refugio seguro."},
     "AUDUSD=X": {"name":"AUD / Dólar",     "tipo":"Forex", "sector":"Forex Major", "riesgo":"Medio",  "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Dólar australiano. Ligado a materias primas."},
-    # ── MATERIAS PRIMAS ───────────────────────────────────────────────────
     "GC=F":  {"name":"Oro (Gold)",          "tipo":"Commodity","sector":"Metales", "riesgo":"Bajo",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Reserva de valor histórica. Refugio en crisis."},
     "SI=F":  {"name":"Plata (Silver)",      "tipo":"Commodity","sector":"Metales", "riesgo":"Medio",  "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Plata. Más volátil que el oro."},
     "CL=F":  {"name":"Petróleo WTI",        "tipo":"Commodity","sector":"Energía", "riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Precio del barril de petróleo."},
@@ -142,7 +131,6 @@ ALL_ASSETS = {
     "ZW=F":  {"name":"Trigo (Wheat)",       "tipo":"Commodity","sector":"Agrícola","riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Trigo. Afectado por clima y geopolítica."},
     "ZC=F":  {"name":"Maíz (Corn)",         "tipo":"Commodity","sector":"Agrícola","riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Maíz. Base de biocombustibles."},
     "KC=F":  {"name":"Café (Coffee)",       "tipo":"Commodity","sector":"Agrícola","riesgo":"Alto",   "div":False, "broker":"XTB / IBKR",   "min_usd":1,  "desc":"Café arábica. Relevante para Colombia."},
-    # ── ÍNDICES GLOBALES ──────────────────────────────────────────────────
     "^GSPC": {"name":"S&P 500 Index",       "tipo":"Índice","sector":"Índice USA",  "riesgo":"Bajo",  "div":False, "broker":"Solo referencia","min_usd":0,"desc":"Termómetro de la economía americana."},
     "^IXIC": {"name":"Nasdaq Composite",    "tipo":"Índice","sector":"Índice USA",  "riesgo":"Medio", "div":False, "broker":"Solo referencia","min_usd":0,"desc":"Índice tecnológico principal."},
     "^DJI":  {"name":"Dow Jones",           "tipo":"Índice","sector":"Índice USA",  "riesgo":"Bajo",  "div":False, "broker":"Solo referencia","min_usd":0,"desc":"Las 30 mayores empresas de EEUU."},
@@ -290,7 +278,7 @@ def build_alert_email(alerts_buy, alerts_sell, alerts_tp, alerts_sl, portfolio_v
               <td style='padding:10px 8px;'>{action_html}</td>
               <td style='padding:10px 8px;'>{broker_html}</td>
               <td style='padding:10px 8px;'>
-                <div style='color:#6b7280;font-size:10px;line-height:1.6;'>{a['razon']}</div>
+                <div style='color:#6b7280;font-size:10px;line-height:1.6;'>{a.get('razon','')}</div>
                 {f"<div style='color:{color};font-size:10px;margin-top:3px;'>TP: ${a['tp']:,.2f} · SL: ${a['sl']:,.2f} · Invertir: ${a['invertir']:,.0f}</div>" if a.get('tp') else ""}
               </td>
             </tr>"""
@@ -340,11 +328,9 @@ def build_alert_email(alerts_buy, alerts_sell, alerts_tp, alerts_sl, portfolio_v
 SCAN_INTERVAL = 300  # 5 minutos
 
 def get_broker_for_asset(asset_info, action):
-    """Retorna broker específico según tipo de activo y acción."""
     tipo  = asset_info.get("tipo","Acción")
     broker_raw = asset_info.get("broker","XTB / IBKR")
     primary = broker_raw.split("/")[0].strip()
-
     if tipo == "Cripto":
         return "Binance" if action == "COMPRAR" else "Binance (vender spot)"
     elif tipo == "Forex":
@@ -359,13 +345,11 @@ def get_broker_for_asset(asset_info, action):
         return f"{primary} (acciones fraccionadas desde $1)"
 
 def run_scanner(cfg, trades):
-    """Escanea todos los activos y genera alertas con broker y niveles específicos."""
     results_buy, results_sell, results_tp, results_sl = [], [], [], []
     prev = st.session_state.get("scanned_signals", {})
     kelly = kelly_criterion()
     portfolio_val = st.session_state.get("portfolio_val", 100)
 
-    # ── 1. Escanear todos los activos (excepto índices de referencia) ─────────
     scannable = {k:v for k,v in ALL_ASSETS.items() if v["tipo"] != "Índice"}
     for sym, info in scannable.items():
         try:
@@ -402,7 +386,6 @@ def run_scanner(cfg, trades):
             st.session_state.scanned_signals[sym] = sig["signal"]
         except: continue
 
-    # ── 2. Posiciones abiertas ─────────────────────────────────────────────────
     for t in trades:
         if t["status"] != "ABIERTA": continue
         try:
@@ -426,13 +409,11 @@ def run_scanner(cfg, trades):
                 t["alert_sell_sent"]=True
         except: continue
 
-    # ── 3. Guardar en historial ────────────────────────────────────────────────
     all_new = results_buy + results_sell + results_tp + results_sl
     if all_new:
         st.session_state.scanner_results = all_new + st.session_state.get("scanner_results",[])
         st.session_state.scanner_results = st.session_state.scanner_results[:100]
 
-    # ── 4. Enviar correo si hay señales ───────────────────────────────────────
     total_new = len(all_new)
     if total_new > 0 and cfg.get("active") and cfg.get("to") and cfg.get("from") and cfg.get("pass"):
         html = build_alert_email(results_buy, results_sell, results_tp, results_sl, portfolio_val)
@@ -515,7 +496,6 @@ with st.sidebar:
     if st.button("↻ Actualizar"):
         st.cache_data.clear(); st.rerun()
 
-    # Mini contador escáner
     secs_left = max(0, SCAN_INTERVAL - (time.time()-st.session_state.last_scan_time))
     pct = int((1-secs_left/SCAN_INTERVAL)*100)
     st.markdown(f"""
@@ -558,7 +538,7 @@ sc=sig["color"]; sl=sig["signal"]
 sig_emoji   = "🟢" if sl=="COMPRAR" else ("🔴" if sl=="VENDER" else "🟡")
 price_arrow = "▲" if price_chg>=0 else "▼"
 price_color = "#00ff9d" if price_chg>=0 else "#ff4d6d"
-broker_recom = get_broker_for_asset(info, sl) if 'get_broker_for_asset' in dir() else info["broker"]
+broker_recom = get_broker_for_asset(info, sl)
 
 st.markdown(f"""
 <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:18px 22px;margin-bottom:12px;'>
@@ -701,7 +681,6 @@ with t4:
           <div style='color:#4b5563;font-size:10px;margin-top:6px;'>TP → <span style='color:#00ff9d;'>${proj_tp:,.4f}</span> · SL → <span style='color:#ff4d6d;'>${proj_sl:,.4f}</span></div>
         </div></div>""",unsafe_allow_html=True)
 
-    # Conclusiones automáticas
     st.markdown("<br>### 🧠 Conclusiones — ¿Cuándo invertir y en qué broker?")
     p52h=df_1d["high"].max(); p52l=df_1d["low"].min()
     ma7_v=float(last.get("ma7",0)) if pd.notna(last.get("ma7")) else 0
@@ -741,7 +720,6 @@ with t4:
               <div style='color:#6b7280;font-size:11px;line-height:1.7;'>{desc}</div>
             </div>""",unsafe_allow_html=True)
 
-    # Conclusión final
     s=sig["strength"]
     if s>=70: fc_title,fc_color,fc_desc="COMPRAR AHORA","#00ff9d",f"Múltiples señales alineadas. Entra con ${invest_amt:,.2f} en {broker_recom}. TP: ${proj_tp:,.4f} · SL: ${proj_sl:,.4f}"
     elif s>=55: fc_title,fc_color,fc_desc="CONDICIONES FAVORABLES","#ffd60a",f"Señales positivas pero no todas confirmadas. Considera 50% del monto Kelly (${invest_amt/2:,.2f}) en {broker_recom}."
@@ -988,23 +966,30 @@ with t6:
             for log in st.session_state.alert_log[:8]:
                 st.markdown(f"<div style='background:#060a0f;border-left:3px solid {log['color']};padding:5px 10px;margin-top:4px;font-size:10px;color:#6b7280;font-family:Space Mono;'>[{log['time']}] {log['msg']}</div>",unsafe_allow_html=True)
 
-    # Historial señales
+    # ── HISTORIAL DE SEÑALES — BUG CORREGIDO: r["reason"] → r.get("razon","") ──
     if st.session_state.scanner_results:
         st.markdown("<br>**📊 Señales detectadas (últimas 20)**")
         for r in st.session_state.scanner_results[:20]:
             ic={"COMPRAR":"🟢","VENDER":"🔴","TP":"🎯","SL":"🛑"}.get(r.get("type",""),"📊")
             b_shown=r.get("broker","").split("(")[0].strip()
+            r_color=r.get("color","#9ca3af")
+            r_symbol=r.get("symbol","—")
+            r_price=r.get("price",0)
+            r_strength=r.get("strength","—")
+            r_razon=r.get("razon","")      # ← CORRECCIÓN: era r["reason"], clave no existía
+            r_time=r.get("time","")         # ← CORRECCIÓN: uso seguro con .get()
+            r_type=r.get("type","")
             st.markdown(f"""
-            <div style='background:#060a0f;border-left:3px solid {r["color"]};border-radius:0 6px 6px 0;
+            <div style='background:#060a0f;border-left:3px solid {r_color};border-radius:0 6px 6px 0;
                         padding:8px 14px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;'>
               <div>
-                <span style='color:#fff;font-family:Space Mono;font-weight:700;'>{ic} {r["symbol"]}</span>
-                <span style='background:{r["color"]}20;color:{r["color"]};padding:1px 7px;border-radius:3px;font-size:9px;font-family:Space Mono;margin-left:8px;'>{r.get("type","")}</span>
-                <span style='color:#4b5563;font-size:10px;margin-left:8px;'>${r["price"]:,.4f} · {r["strength"]}%</span>
+                <span style='color:#fff;font-family:Space Mono;font-weight:700;'>{ic} {r_symbol}</span>
+                <span style='background:{r_color}20;color:{r_color};padding:1px 7px;border-radius:3px;font-size:9px;font-family:Space Mono;margin-left:8px;'>{r_type}</span>
+                <span style='color:#4b5563;font-size:10px;margin-left:8px;'>${r_price:,.4f} · {r_strength}%</span>
                 <span style='background:#0ea5e920;color:#0ea5e9;padding:1px 6px;border-radius:3px;font-size:9px;margin-left:6px;'>🏦 {b_shown}</span>
-                <div style='color:#6b7280;font-size:10px;margin-top:2px;'>{r["reason"]}</div>
+                <div style='color:#6b7280;font-size:10px;margin-top:2px;'>{r_razon}</div>
               </div>
-              <span style='color:#374151;font-family:Space Mono;font-size:10px;'>{r["time"]}</span>
+              <span style='color:#374151;font-family:Space Mono;font-size:10px;'>{r_time}</span>
             </div>""",unsafe_allow_html=True)
 
 # ── TAB 7: BROKERS ─────────────────────────────────────────────────────────────
