@@ -12,7 +12,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Quantum Trade | AI Analytics", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
-st.markdown("""
+st.html("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
@@ -33,7 +33,7 @@ h1,h2,h3{color:#ffffff!important;font-family:'Space Mono',monospace!important;}
 .stTabs [aria-selected="true"]{color:#00ff9d!important;border-bottom:2px solid #00ff9d!important;}
 div[data-testid="stExpander"]{background:#0d1117!important;border:1px solid #1f2937!important;border-radius:8px!important;}
 </style>
-""", unsafe_allow_html=True)
+""")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # UNIVERSO COMPLETO — 120+ ACTIVOS
@@ -344,12 +344,168 @@ def get_broker_for_asset(asset_info, action):
     else:
         return f"{primary} (acciones fraccionadas desde $1)"
 
+# ─── EMAIL DE POSICIONES — ALERTAS INTELIGENTES ───────────────────────────────
+def build_position_alert_email(alerts_position, portfolio_val):
+    """Email específico para alertas de tus inversiones reales."""
+    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+    total = len(alerts_position)
+
+    # Agrupar por nivel de urgencia
+    criticas  = [a for a in alerts_position if a.get("urgency") == "CRITICA"]
+    peligro   = [a for a in alerts_position if a.get("urgency") == "PELIGRO"]
+    precaucion= [a for a in alerts_position if a.get("urgency") == "PRECAUCION"]
+    atencion  = [a for a in alerts_position if a.get("urgency") == "ATENCION"]
+    positivas = [a for a in alerts_position if a.get("urgency") in ("TP_PARCIAL","TP_TOTAL","PICO_CAIDA")]
+
+    def urgency_section(title, color, emoji, items):
+        if not items: return ""
+        rows = ""
+        for a in items:
+            pnl_color = "#00ff9d" if a.get("pnl", 0) >= 0 else "#ff4d6d"
+            rows += f"""
+            <tr style='border-bottom:1px solid #1f2937;'>
+              <td style='padding:10px 8px;'>
+                <div style='color:#fff;font-family:monospace;font-weight:700;font-size:14px;'>{a['symbol']}</div>
+                <div style='color:#4b5563;font-size:10px;'>{a.get('name','')}</div>
+              </td>
+              <td style='padding:10px 8px;'>
+                <div style='color:#fff;font-family:monospace;font-weight:700;'>${a['cp']:,.4f}</div>
+                <div style='color:{pnl_color};font-size:10px;'>{a['upct']:+.2f}% · {'+' if a['pnl']>=0 else ''}${a['pnl']:,.2f}</div>
+              </td>
+              <td style='padding:10px 8px;'>
+                <div style='color:#4b5563;font-size:10px;'>Compra: ${a['buy_price']:,.4f}</div>
+                <div style='color:#00ff9d;font-size:10px;'>TP: ${a['tp_price']:,.4f}</div>
+                <div style='color:#ff4d6d;font-size:10px;'>SL: ${a['sl_price']:,.4f}</div>
+              </td>
+              <td style='padding:10px 8px;'>
+                <div style='background:{color}20;color:{color};padding:4px 8px;border-radius:4px;font-size:10px;font-weight:700;text-align:center;'>{a.get('accion','')}</div>
+                <div style='color:#6b7280;font-size:10px;margin-top:4px;'>{a.get('razon','')}</div>
+              </td>
+            </tr>"""
+        return f"""
+        <div style='background:#0d1117;border:1px solid #1f2937;border-top:3px solid {color};border-radius:8px;padding:16px;margin-bottom:14px;'>
+          <div style='color:{color};font-weight:700;font-size:13px;margin-bottom:12px;'>{emoji} {title} ({len(items)})</div>
+          <table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;'>
+            <tr style='border-bottom:1px solid #374151;'>
+              <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>ACTIVO</th>
+              <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>PRECIO ACTUAL</th>
+              <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>TUS NIVELES</th>
+              <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>QUÉ HACER</th>
+            </tr>
+            {rows}
+          </table>
+        </div>"""
+
+    return f"""
+    <div style='background:#060a0f;font-family:Arial,sans-serif;padding:28px;max-width:720px;margin:0 auto;border-radius:12px;border:1px solid #1f2937;'>
+      <div style='text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #1f2937;'>
+        <div style='font-size:30px;'>📊</div>
+        <div style='color:#00ff9d;font-size:18px;font-weight:700;letter-spacing:2px;margin-top:6px;'>QUANTUM TRADE</div>
+        <div style='color:#4b5563;font-size:9px;letter-spacing:3px;'>ALERTA DE TUS INVERSIONES</div>
+        <div style='color:#374151;font-size:11px;margin-top:6px;'>{now} · {total} alerta(s) en tus posiciones</div>
+      </div>
+
+      {urgency_section("STOP LOSS ALCANZADO — SAL AHORA","#ff4d6d","🚨 CRÍTICO",criticas)}
+      {urgency_section("ZONA DE PELIGRO — Muy cerca del SL","#ff6b35","🛑 PELIGRO",peligro)}
+      {urgency_section("PRECAUCIÓN — Bajando hacia el SL","#ffd60a","⚠️ PRECAUCIÓN",precaucion)}
+      {urgency_section("ATENCIÓN — Inicio de caída","#f59e0b","👀 ATENCIÓN",atencion)}
+      {urgency_section("NOTICIAS BUENAS — Subiendo bien","#00ff9d","✅ POSITIVO",positivas)}
+
+      <div style='background:#0d1117;border:1px solid #1f2937;border-radius:6px;padding:12px;margin-top:8px;font-size:10px;color:#4b5563;line-height:1.9;'>
+        🔴 <b style='color:#ff4d6d;'>CRÍTICO</b> = Tu Stop Loss fue alcanzado. Sal del mercado.<br>
+        🟠 <b style='color:#ff6b35;'>PELIGRO</b> = Bajaste 75% del camino hacia el SL. Considera salir.<br>
+        🟡 <b style='color:#ffd60a;'>PRECAUCIÓN</b> = Bajaste 50% del camino hacia el SL. Monitorea.<br>
+        👀 <b style='color:#f59e0b;'>ATENCIÓN</b> = Bajaste 25% del camino hacia el SL. Ten cuidado.<br>
+        ⚠️ Esta herramienta es educativa y <b>no constituye asesoría financiera certificada</b>.
+      </div>
+    </div>"""
+
+# ─── EMAIL RESUMEN DIARIO DE POSICIONES ───────────────────────────────────────
+def build_daily_summary_email(trades_open, portfolio_val):
+    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+    rows = ""
+    total_inv = 0; total_pnl = 0
+    for t in trades_open:
+        try:
+            cp, _ = fetch_quick_price(t["symbol"])
+            if cp is None: cp = t["buy_price"]
+        except: cp = t["buy_price"]
+        pnl   = (cp - t["buy_price"]) * t["shares"]
+        upct  = (cp - t["buy_price"]) / t["buy_price"] * 100
+        total_inv += t["invested"]; total_pnl += pnl
+        pnl_color = "#00ff9d" if pnl >= 0 else "#ff4d6d"
+        rango = t["tp_price"] - t["sl_price"]
+        prog  = max(0, min(100, int((cp - t["sl_price"]) / rango * 100))) if rango > 0 else 50
+        barra_color = "#00ff9d" if prog > 60 else ("#ffd60a" if prog > 30 else "#ff4d6d")
+        rows += f"""
+        <tr style='border-bottom:1px solid #1f2937;'>
+          <td style='padding:10px 8px;'>
+            <div style='color:#fff;font-family:monospace;font-weight:700;'>{t['symbol']}</div>
+            <div style='color:#4b5563;font-size:10px;'>Desde {t['buy_date']}</div>
+          </td>
+          <td style='padding:10px 8px;color:#fff;font-family:monospace;'>${cp:,.4f}</td>
+          <td style='padding:10px 8px;'>
+            <div style='color:{pnl_color};font-family:monospace;font-weight:700;'>{upct:+.2f}%</div>
+            <div style='color:{pnl_color};font-size:10px;'>{'+' if pnl>=0 else ''}${pnl:,.2f}</div>
+          </td>
+          <td style='padding:10px 8px;'>
+            <div style='color:#00ff9d;font-size:10px;'>TP ${t['tp_price']:,.4f}</div>
+            <div style='color:#ff4d6d;font-size:10px;'>SL ${t['sl_price']:,.4f}</div>
+            <div style='background:#1f2937;border-radius:3px;height:4px;margin-top:4px;width:120px;'>
+              <div style='background:{barra_color};border-radius:3px;height:4px;width:{prog}%;'></div>
+            </div>
+          </td>
+        </tr>"""
+
+    total_color = "#00ff9d" if total_pnl >= 0 else "#ff4d6d"
+    return f"""
+    <div style='background:#060a0f;font-family:Arial,sans-serif;padding:28px;max-width:720px;margin:0 auto;border-radius:12px;border:1px solid #1f2937;'>
+      <div style='text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #1f2937;'>
+        <div style='font-size:30px;'>📋</div>
+        <div style='color:#00ff9d;font-size:18px;font-weight:700;letter-spacing:2px;margin-top:6px;'>QUANTUM TRADE</div>
+        <div style='color:#4b5563;font-size:9px;letter-spacing:3px;'>RESUMEN DIARIO DE TU PORTAFOLIO</div>
+        <div style='color:#374151;font-size:11px;margin-top:6px;'>{now}</div>
+      </div>
+      <div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;text-align:center;font-family:monospace;'>
+        <div style='background:#0d1117;border:1px solid #1f2937;border-radius:6px;padding:12px;'>
+          <div style='color:#4b5563;font-size:9px;'>POSICIONES</div>
+          <div style='color:#fff;font-size:22px;font-weight:700;'>{len(trades_open)}</div>
+        </div>
+        <div style='background:#0d1117;border:1px solid #1f2937;border-radius:6px;padding:12px;'>
+          <div style='color:#4b5563;font-size:9px;'>TOTAL INVERTIDO</div>
+          <div style='color:#fff;font-size:18px;font-weight:700;'>${total_inv:,.2f}</div>
+        </div>
+        <div style='background:#0d1117;border:1px solid #1f2937;border-radius:6px;padding:12px;'>
+          <div style='color:#4b5563;font-size:9px;'>P&L TOTAL</div>
+          <div style='color:{total_color};font-size:18px;font-weight:700;'>{'+' if total_pnl>=0 else ''}${total_pnl:,.2f}</div>
+        </div>
+      </div>
+      <div style='background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;'>
+        <table width='100%' cellpadding='0' cellspacing='0' style='border-collapse:collapse;'>
+          <tr style='border-bottom:1px solid #374151;'>
+            <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>ACTIVO</th>
+            <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>PRECIO</th>
+            <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>P&L</th>
+            <th style='color:#4b5563;font-size:9px;padding:6px 8px;text-align:left;'>NIVELES</th>
+          </tr>
+          {rows}
+        </table>
+      </div>
+      <div style='background:#0d1117;border:1px solid #1f2937;border-radius:6px;padding:10px;margin-top:10px;font-size:10px;color:#4b5563;'>
+        ⚠️ Herramienta educativa. No constituye asesoría financiera certificada.
+      </div>
+    </div>"""
+
 def run_scanner(cfg, trades):
+    """Escáner completo: mercado + vigilancia inteligente de posiciones reales."""
     results_buy, results_sell, results_tp, results_sl = [], [], [], []
+    results_position_alerts = []   # ← alertas de tus inversiones reales
     prev = st.session_state.get("scanned_signals", {})
     kelly = kelly_criterion()
     portfolio_val = st.session_state.get("portfolio_val", 100)
+    now_ts = time.time()
 
+    # ── 1. Escanear mercado general ───────────────────────────────────────────
     scannable = {k:v for k,v in ALL_ASSETS.items() if v["tipo"] != "Índice"}
     for sym, info in scannable.items():
         try:
@@ -365,7 +521,6 @@ def run_scanner(cfg, trades):
             broker = get_broker_for_asset(info, sig["signal"])
             prev_sig = prev.get(sym, "NEUTRAL")
             razon = " · ".join([r.replace("✅ ","").replace("❌ ","").replace("➖ ","") for r in sig["reasons"][:3]])
-
             entry = {
                 "symbol":sym,"name":info["name"],"price":cp,"strength":sig["strength"],
                 "razon":razon,"broker":broker,"tipo":info["tipo"],
@@ -373,56 +528,186 @@ def run_scanner(cfg, trades):
                 "color":"#00ff9d","time":datetime.now().strftime("%H:%M"),
                 "accion_recomendada": f"COMPRAR en {broker.split('(')[0].strip()}" if sig["signal"]=="COMPRAR" else f"VENDER en {broker.split('(')[0].strip()}"
             }
-
             if sig["signal"] == "COMPRAR" and sig["strength"] >= 65 and prev_sig != "COMPRAR":
-                entry["color"] = "#00ff9d"
-                entry["type"]  = "COMPRAR"
+                entry["color"] = "#00ff9d"; entry["type"] = "COMPRAR"
                 results_buy.append(entry)
             elif sig["signal"] == "VENDER" and sig["strength"] <= 35 and prev_sig != "VENDER":
-                entry["color"] = "#ff4d6d"
-                entry["type"]  = "VENDER"
+                entry["color"] = "#ff4d6d"; entry["type"] = "VENDER"
                 results_sell.append(entry)
-
             st.session_state.scanned_signals[sym] = sig["signal"]
         except: continue
 
+    # ── 2. VIGILANCIA INTELIGENTE DE TUS POSICIONES REALES ───────────────────
     for t in trades:
         if t["status"] != "ABIERTA": continue
         try:
             cp, _ = fetch_quick_price(t["symbol"])
             if cp is None: continue
-            upct = (cp - t["buy_price"]) / t["buy_price"] * 100
-            pnl  = (cp - t["buy_price"]) * t["shares"]
-            info = ALL_ASSETS.get(t["symbol"], {})
-            broker = get_broker_for_asset(info, "VENDER")
-            if cp >= t["tp_price"] and not t.get("alert_sell_sent"):
-                results_tp.append({"symbol":t["symbol"],"name":info.get("name",t["symbol"]),"price":cp,
-                    "strength":round(upct,1),"razon":f"TP alcanzado · Ganancia +${pnl:,.2f}",
-                    "broker":broker,"tp":None,"sl":None,"invertir":0,
-                    "accion_recomendada":"VENDER — tomar ganancias","color":"#00ff9d","time":datetime.now().strftime("%H:%M"),"type":"TP"})
-                t["alert_sell_sent"]=True
-            elif cp <= t["sl_price"] and not t.get("alert_sell_sent"):
-                results_sl.append({"symbol":t["symbol"],"name":info.get("name",t["symbol"]),"price":cp,
-                    "strength":round(upct,1),"razon":f"SL alcanzado · Pérdida ${pnl:,.2f}",
-                    "broker":broker,"tp":None,"sl":None,"invertir":0,
-                    "accion_recomendada":"VENDER — limitar pérdidas","color":"#ff4d6d","time":datetime.now().strftime("%H:%M"),"type":"SL"})
-                t["alert_sell_sent"]=True
+
+            info     = ALL_ASSETS.get(t["symbol"], {})
+            broker   = get_broker_for_asset(info, "VENDER")
+            buy      = t["buy_price"]
+            tp_p     = t["tp_price"]
+            sl_p     = t["sl_price"]
+            upct     = (cp - buy) / buy * 100
+            pnl      = (cp - buy) * t["shares"]
+            nombre   = info.get("name", t["symbol"])
+
+            # Actualizar precio pico (máximo histórico de la posición)
+            if cp > t.get("peak_price", buy):
+                t["peak_price"] = cp
+                t["alert_drop_from_peak_sent"] = False  # resetear si sube a nuevo pico
+
+            rango_sl = buy - sl_p          # distancia total de compra a SL
+            rango_tp = tp_p - buy          # distancia total de compra a TP
+            caida_desde_compra = buy - cp  # cuánto ha caído desde precio de compra
+            caida_desde_pico   = t.get("peak_price", buy) - cp  # caída desde el pico
+
+            # Porcentaje del camino hacia el SL (0% = precio compra, 100% = SL)
+            pct_hacia_sl = (caida_desde_compra / rango_sl * 100) if rango_sl > 0 else 0
+            # Porcentaje del camino hacia el TP (0% = precio compra, 100% = TP)
+            pct_hacia_tp = ((cp - buy) / rango_tp * 100) if rango_tp > 0 else 0
+            # % de caída desde el pico máximo
+            pct_caida_pico = (caida_desde_pico / t.get("peak_price", buy) * 100) if t.get("peak_price", buy) > 0 else 0
+
+            base_entry = {
+                "symbol":t["symbol"],"name":nombre,"cp":cp,"buy_price":buy,
+                "tp_price":tp_p,"sl_price":sl_p,"upct":upct,"pnl":pnl,
+                "broker":broker,"time":datetime.now().strftime("%H:%M"),
+                "color":"#ff4d6d",
+            }
+
+            # ── 🚨 CRÍTICO: SL alcanzado ─────────────────────────────────────
+            if cp <= sl_p and not t.get("alert_sell_sent"):
+                results_position_alerts.append({**base_entry,
+                    "urgency":"CRITICA",
+                    "accion":f"🚨 SAL AHORA en {broker.split('(')[0].strip()}",
+                    "razon":f"Stop Loss alcanzado. Pérdida: ${pnl:,.2f} ({upct:.1f}%). Limita el daño."
+                })
+                results_sl.append({**base_entry,"strength":round(upct,1),
+                    "razon":f"SL alcanzado · Pérdida ${pnl:,.2f}","tp":None,"sl":None,"invertir":0,
+                    "accion_recomendada":"VENDER — limitar pérdidas","type":"SL"})
+                t["alert_sell_sent"] = True
+
+            # ── 🎯 TP alcanzado ───────────────────────────────────────────────
+            elif cp >= tp_p and not t.get("alert_sell_sent"):
+                results_position_alerts.append({**base_entry,
+                    "color":"#00ff9d","urgency":"TP_TOTAL",
+                    "accion":f"🎯 VENDE en {broker.split('(')[0].strip()} — TP alcanzado",
+                    "razon":f"¡Take Profit alcanzado! Ganancia: +${pnl:,.2f} (+{upct:.1f}%). ¡Felicitaciones!"
+                })
+                results_tp.append({**base_entry,"strength":round(upct,1),
+                    "razon":f"TP alcanzado · Ganancia +${pnl:,.2f}","tp":None,"sl":None,"invertir":0,
+                    "accion_recomendada":"VENDER — tomar ganancias","type":"TP"})
+                t["alert_sell_sent"] = True
+
+            # ── 🛑 75% del camino hacia SL — PELIGRO ─────────────────────────
+            elif pct_hacia_sl >= 75 and not t.get("alert_75pct_sent") and not t.get("alert_sell_sent"):
+                results_position_alerts.append({**base_entry,
+                    "color":"#ff6b35","urgency":"PELIGRO",
+                    "accion":f"🛑 CONSIDERA SALIR en {broker.split('(')[0].strip()}",
+                    "razon":f"Bajaste el 75% del camino hacia tu SL (${sl_p:,.4f}). Precio actual: ${cp:,.4f}. Pérdida si sale: ${pnl:,.2f}."
+                })
+                t["alert_75pct_sent"] = True
+
+            # ── ⚠️ 50% del camino hacia SL — PRECAUCIÓN ──────────────────────
+            elif pct_hacia_sl >= 50 and not t.get("alert_50pct_sent") and not t.get("alert_sell_sent"):
+                results_position_alerts.append({**base_entry,
+                    "color":"#ffd60a","urgency":"PRECAUCION",
+                    "accion":"⚠️ MONITOREA — Considera reducir posición",
+                    "razon":f"Bajaste el 50% del camino hacia tu SL (${sl_p:,.4f}). Si sigue bajando llegará al stop. Pérdida potencial: ${(sl_p-buy)*t['shares']:,.2f}."
+                })
+                t["alert_50pct_sent"] = True
+
+            # ── 👀 25% del camino hacia SL — ATENCIÓN ────────────────────────
+            elif pct_hacia_sl >= 25 and not t.get("alert_25pct_sent") and not t.get("alert_sell_sent"):
+                results_position_alerts.append({**base_entry,
+                    "color":"#f59e0b","urgency":"ATENCION",
+                    "accion":"👀 PRESTA ATENCIÓN — Primer aviso de caída",
+                    "razon":f"La inversión bajó {abs(upct):.1f}% desde tu entrada. Aún hay margen hasta el SL (${sl_p:,.4f}) pero vigila."
+                })
+                t["alert_25pct_sent"] = True
+
+            # ── 📉 Caída >5% desde el pico — Reversión ───────────────────────
+            elif pct_caida_pico >= 5 and cp > buy and not t.get("alert_drop_from_peak_sent"):
+                results_position_alerts.append({**base_entry,
+                    "color":"#f59e0b","urgency":"PICO_CAIDA",
+                    "accion":"📉 REVERSIÓN DESDE PICO — Considera asegurar ganancias",
+                    "razon":f"Subió hasta ${t.get('peak_price',buy):,.4f} y ahora cayó {pct_caida_pico:.1f}% desde ese máximo. Aún en ganancia ({upct:+.1f}%), pero puede seguir bajando."
+                })
+                t["alert_drop_from_peak_sent"] = True
+
+            # ── ✅ 80% del camino hacia TP ────────────────────────────────────
+            elif pct_hacia_tp >= 80 and not t.get("alert_tp80_sent"):
+                results_position_alerts.append({**base_entry,
+                    "color":"#00ff9d","urgency":"TP_PARCIAL",
+                    "accion":f"✅ MUY CERCA DEL TP — Considera vender parcial",
+                    "razon":f"Llevas el 80% del camino hacia tu TP (${tp_p:,.4f}). Ganancia actual: +${pnl:,.2f} (+{upct:.1f}%). Puedes asegurar parte."
+                })
+                t["alert_tp80_sent"] = True
+
+            # ── ✅ 50% del camino hacia TP ────────────────────────────────────
+            elif pct_hacia_tp >= 50 and not t.get("alert_tp50_sent"):
+                results_position_alerts.append({**base_entry,
+                    "color":"#00ff9d","urgency":"TP_PARCIAL",
+                    "accion":"✅ BUEN PROGRESO — Mitad del camino al TP",
+                    "razon":f"Ya llevas el 50% del camino hacia tu objetivo (${tp_p:,.4f}). Ganancia actual: +${pnl:,.2f} (+{upct:.1f}%)."
+                })
+                t["alert_tp50_sent"] = True
+
+            # ── Reset de alertas si el precio se recupera ─────────────────────
+            # Si sube y ya no está en zona de peligro, resetear alertas de bajada
+            if pct_hacia_sl < 20 and cp > buy:
+                t["alert_25pct_sent"] = False
+                t["alert_50pct_sent"] = False
+                t["alert_75pct_sent"] = False
+                t["alert_sell_sent"]  = False  # reset para poder alertar de nuevo si vuelve a bajar
+
         except: continue
 
+    # ── 3. RESUMEN DIARIO (una vez al día) ────────────────────────────────────
+    open_trades = [t for t in trades if t["status"] == "ABIERTA"]
+    if open_trades and cfg.get("active") and cfg.get("to") and cfg.get("from") and cfg.get("pass"):
+        for t in open_trades:
+            last_daily = t.get("last_daily_alert")
+            today_str  = datetime.now().strftime("%Y-%m-%d")
+            if last_daily != today_str:
+                # Enviar resumen diario una vez por día
+                html_daily = build_daily_summary_email(open_trades, portfolio_val)
+                subj_daily = f"📋 Resumen diario · {len(open_trades)} posición(es) · {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+                send_email(cfg["to"], cfg["from"], cfg["pass"], subj_daily, html_daily)
+                for t2 in open_trades:
+                    t2["last_daily_alert"] = today_str
+                log_msg = f"📋 Resumen diario enviado · {len(open_trades)} posición(es)"
+                st.session_state.alert_log = [{"time":datetime.now().strftime("%H:%M"),"msg":log_msg,"color":"#0ea5e9"}] + st.session_state.get("alert_log",[])
+                break  # Solo enviar una vez aunque haya varios trades
+
+    # ── 4. Guardar en historial ───────────────────────────────────────────────
     all_new = results_buy + results_sell + results_tp + results_sl
     if all_new:
         st.session_state.scanner_results = all_new + st.session_state.get("scanner_results",[])
         st.session_state.scanner_results = st.session_state.scanner_results[:100]
 
+    # ── 5. Enviar alertas de posiciones reales ────────────────────────────────
+    if results_position_alerts and cfg.get("active") and cfg.get("to") and cfg.get("from") and cfg.get("pass"):
+        html_pos = build_position_alert_email(results_position_alerts, portfolio_val)
+        criticas_count = len([a for a in results_position_alerts if a.get("urgency")=="CRITICA"])
+        peligro_count  = len([a for a in results_position_alerts if a.get("urgency")=="PELIGRO"])
+        subj_pos = f"{'🚨 URGENTE' if criticas_count else '⚠️ ALERTA'} · {len(results_position_alerts)} aviso(s) en tus inversiones · {datetime.now().strftime('%H:%M')}"
+        ok, msg = send_email(cfg["to"], cfg["from"], cfg["pass"], subj_pos, html_pos)
+        log_msg = f"💼 {len(results_position_alerts)} alerta(s) posiciones: {criticas_count}🚨 {peligro_count}🛑"
+        st.session_state.alert_log = [{"time":datetime.now().strftime("%H:%M"),"msg":log_msg,"color":"#ff4d6d" if criticas_count else "#ffd60a"}] + st.session_state.get("alert_log",[])
+
+    # ── 6. Enviar alertas de mercado general ─────────────────────────────────
     total_new = len(all_new)
     if total_new > 0 and cfg.get("active") and cfg.get("to") and cfg.get("from") and cfg.get("pass"):
         html = build_alert_email(results_buy, results_sell, results_tp, results_sl, portfolio_val)
-        subj = f"📊 Quantum Trade — {total_new} señal(es) · {datetime.now().strftime('%H:%M')} · {len(results_buy)} compra / {len(results_sell)} venta"
+        subj = f"📊 Mercado — {total_new} señal(es) · {len(results_buy)} compra / {len(results_sell)} venta · {datetime.now().strftime('%H:%M')}"
         ok, msg = send_email(cfg["to"], cfg["from"], cfg["pass"], subj, html)
-        log_msg = f"📧 {total_new} señales enviadas ({len(results_buy)}🟢 {len(results_sell)}🔴 {len(results_tp)}🎯 {len(results_sl)}🛑)"
+        log_msg = f"📧 {total_new} señales mercado ({len(results_buy)}🟢 {len(results_sell)}🔴)"
         st.session_state.alert_log = [{"time":datetime.now().strftime("%H:%M"),"msg":log_msg,"color":"#00ff9d" if ok else "#ff4d6d"}] + st.session_state.get("alert_log",[])
 
-    st.session_state.last_scan_time = time.time()
+    st.session_state.last_scan_time = now_ts
     return all_new
 
 # ─── SESSION STATE ─────────────────────────────────────────────────────────────
@@ -437,7 +722,17 @@ def add_trade(sym, buy_price, shares, buy_date, tp_pct, sl_pct, notes):
         "shares":shares,"invested":round(buy_price*shares,2),"buy_date":str(buy_date),
         "tp_price":round(buy_price*(1+tp_pct/100),2),"sl_price":round(buy_price*(1-sl_pct/100),2),
         "tp_pct":tp_pct,"sl_pct":sl_pct,"notes":notes,"status":"ABIERTA",
-        "sell_price":None,"sell_date":None,"alert_sell_sent":False,
+        "sell_price":None,"sell_date":None,
+        # ── Sistema de alertas inteligente ──────────────────────────────
+        "alert_sell_sent":False,        # TP o SL exacto alcanzado
+        "alert_25pct_sent":False,        # Bajó 25% del camino al SL → Atención
+        "alert_50pct_sent":False,        # Bajó 50% del camino al SL → Precaución
+        "alert_75pct_sent":False,        # Bajó 75% del camino al SL → Peligro
+        "alert_tp50_sent":False,         # Llegó al 50% del camino al TP → buena noticia
+        "alert_tp80_sent":False,         # Llegó al 80% del camino al TP → considerar vender
+        "last_daily_alert":None,         # Última vez que se mandó resumen diario
+        "peak_price":buy_price,          # Precio máximo alcanzado (para calcular caída desde pico)
+        "alert_drop_from_peak_sent":False, # Cayó >5% desde el pico → alerta de reversión
     })
 
 def close_trade(idx, sell_price, sell_date):
@@ -656,7 +951,7 @@ with t3:
 with t4:
     cl,cr=st.columns(2)
     with cl:
-        st.markdown("### 📋 Señales Detectadas")
+        st.markdown("### 📋 Señales Detectadas", unsafe_allow_html=True)
         for r in sig["reasons"]:
             color="#00ff9d" if "✅" in r else ("#ff4d6d" if "❌" in r else "#9ca3af")
             st.markdown(f"<div style='color:{color};font-size:12px;padding:4px 0;font-family:Space Mono;'>{r}</div>",unsafe_allow_html=True)
@@ -669,9 +964,9 @@ with t4:
         <div style='color:{sig["color"]};font-family:Space Mono;font-size:22px;font-weight:700;margin-top:6px;'>{s}%</div>
         <div style='color:#4b5563;font-size:11px;margin-top:10px;'>🏦 Broker recomendado:</div>
         <div style='color:#fff;font-size:13px;font-weight:600;margin-top:3px;'>{broker_recom}</div>
-        </div>""",unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
     with cr:
-        st.markdown("### 🧮 Kelly Criterion")
+        st.markdown("### 🧮 Kelly Criterion", unsafe_allow_html=True)
         st.markdown(f"""<div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:18px;'>
         <div style='color:#ffd60a;font-family:Space Mono;font-size:38px;font-weight:700;text-align:center;'>{kelly_pct*100:.1f}%</div>
         <div style='color:#4b5563;font-size:11px;text-align:center;'>del capital a invertir</div>
@@ -679,9 +974,9 @@ with t4:
           <div style='color:#6b7280;font-size:11px;'>Monto en {symbol}</div>
           <div style='color:{sig["color"]};font-family:Space Mono;font-size:26px;font-weight:700;'>${invest_amt:,.2f}</div>
           <div style='color:#4b5563;font-size:10px;margin-top:6px;'>TP → <span style='color:#00ff9d;'>${proj_tp:,.4f}</span> · SL → <span style='color:#ff4d6d;'>${proj_sl:,.4f}</span></div>
-        </div></div>""",unsafe_allow_html=True)
+        </div></div>""", unsafe_allow_html=True)
 
-    st.markdown("<br>### 🧠 Conclusiones — ¿Cuándo invertir y en qué broker?")
+    st.markdown("<br><h3 style='color:#fff;font-family:Space Mono,monospace;'>🧠 Conclusiones — ¿Cuándo invertir y en qué broker?</h3>", unsafe_allow_html=True)
     p52h=df_1d["high"].max(); p52l=df_1d["low"].min()
     ma7_v=float(last.get("ma7",0)) if pd.notna(last.get("ma7")) else 0
     ma20_v=float(last.get("ma20",0)) if pd.notna(last.get("ma20")) else 0
@@ -718,7 +1013,7 @@ with t4:
                 <span style='background:{color}20;color:{color};padding:2px 7px;border-radius:3px;font-size:9px;font-family:Space Mono;font-weight:700;'>{label}</span>
               </div>
               <div style='color:#6b7280;font-size:11px;line-height:1.7;'>{desc}</div>
-            </div>""",unsafe_allow_html=True)
+            </div>""", unsafe_allow_html=True)
 
     s=sig["strength"]
     if s>=70: fc_title,fc_color,fc_desc="COMPRAR AHORA","#00ff9d",f"Múltiples señales alineadas. Entra con ${invest_amt:,.2f} en {broker_recom}. TP: ${proj_tp:,.4f} · SL: ${proj_sl:,.4f}"
@@ -729,11 +1024,11 @@ with t4:
     <div style='background:{fc_color}15;border:2px solid {fc_color};border-radius:8px;padding:16px;margin-top:6px;'>
       <div style='color:{fc_color};font-family:Space Mono;font-size:13px;font-weight:700;margin-bottom:6px;'>{"🚀" if s>=70 else "👍" if s>=55 else "⏸️" if s>=40 else "🛑"} CONCLUSIÓN: {fc_title}</div>
       <div style='color:#9ca3af;font-size:12px;line-height:1.7;'>{fc_desc}</div>
-    </div>""",unsafe_allow_html=True)
+    </div>""", unsafe_allow_html=True)
 
 # ── TAB 5: MIS INVERSIONES ─────────────────────────────────────────────────────
 with t5:
-    st.markdown("### 💼 Mis Inversiones")
+    st.markdown("### 💼 Mis Inversiones", unsafe_allow_html=True)
     proj_tp_pct=round((proj_tp-price_now)/price_now*100,2)
     proj_sl_pct=round((price_now-proj_sl)/price_now*100,2)
     rr=round(proj_tp_pct/proj_sl_pct,2) if proj_sl_pct>0 else 0
@@ -806,7 +1101,7 @@ with t5:
         sm4.metric("P&L Realizado",f"${sum(t.get('pnl',0) for t in closed_t):+,.2f}")
 
         if open_t:
-            st.markdown("#### 🟢 Posiciones Abiertas")
+            st.markdown("#### 🟢 Posiciones Abiertas", unsafe_allow_html=True)
             for trade in open_t:
                 oi=st.session_state.trades.index(trade)
                 try:
@@ -817,32 +1112,73 @@ with t5:
                 pc="#00ff9d" if up>=0 else "#ff4d6d"
                 a_info=ALL_ASSETS.get(trade["symbol"],{})
                 b_venta=get_broker_for_asset(a_info,"VENDER")
-                if cp>=trade["tp_price"]: am,ac=f"🎯 TAKE PROFIT — Vende en {b_venta}","#00ff9d"
-                elif cp<=trade["sl_price"]: am,ac=f"🛑 STOP LOSS — Sal ahora en {b_venta}","#ff4d6d"
-                elif upc>=trade["tp_pct"]*0.7: am,ac="⚡ Cerca del TP. Monitorea.","#ffd60a"
-                else: am,ac=f"⏳ Activa — Broker: {b_venta}","#4b5563"
+
+                # Calcular nivel de alerta actual
+                rango_sl = trade["buy_price"] - trade["sl_price"]
+                caida    = trade["buy_price"] - cp
+                pct_sl   = (caida / rango_sl * 100) if rango_sl > 0 else 0
+                rango_tp = trade["tp_price"] - trade["buy_price"]
+                pct_tp   = ((cp - trade["buy_price"]) / rango_tp * 100) if rango_tp > 0 else 0
+
+                if cp >= trade["tp_price"]:
+                    am,ac = f"🎯 ¡TP ALCANZADO! Vende en {b_venta}","#00ff9d"
+                    alert_badge = "<span style='background:#00ff9d20;color:#00ff9d;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>🎯 TP ALCANZADO</span>"
+                elif cp <= trade["sl_price"]:
+                    am,ac = f"🚨 SL ALCANZADO — SAL AHORA en {b_venta}","#ff4d6d"
+                    alert_badge = "<span style='background:#ff4d6d20;color:#ff4d6d;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>🚨 SL ALCANZADO</span>"
+                elif pct_sl >= 75:
+                    am,ac = f"🛑 PELIGRO — 75% hacia SL. Considera salir en {b_venta}","#ff6b35"
+                    alert_badge = "<span style='background:#ff6b3520;color:#ff6b35;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>🛑 PELIGRO</span>"
+                elif pct_sl >= 50:
+                    am,ac = "⚠️ PRECAUCIÓN — 50% hacia SL. Monitorea de cerca.","#ffd60a"
+                    alert_badge = "<span style='background:#ffd60a20;color:#ffd60a;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>⚠️ PRECAUCIÓN</span>"
+                elif pct_sl >= 25:
+                    am,ac = "👀 ATENCIÓN — Inicio de caída hacia SL.","#f59e0b"
+                    alert_badge = "<span style='background:#f59e0b20;color:#f59e0b;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>👀 ATENCIÓN</span>"
+                elif pct_tp >= 80:
+                    am,ac = f"✅ 80% hacia TP. Considera asegurar en {b_venta}","#00ff9d"
+                    alert_badge = "<span style='background:#00ff9d20;color:#00ff9d;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>✅ CASI EN TP</span>"
+                elif pct_tp >= 50:
+                    am,ac = "✅ Bien — Mitad del camino al TP.","#00ff9d"
+                    alert_badge = "<span style='background:#00ff9d20;color:#00ff9d;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>✅ SUBIENDO</span>"
+                else:
+                    am,ac = f"⏳ Activa — Vigilando · Broker venta: {b_venta}","#4b5563"
+                    alert_badge = "<span style='background:#1f2937;color:#4b5563;padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;'>⏳ VIGILANDO</span>"
+
                 rt=trade["tp_price"]-trade["sl_price"]; prog=max(0,min(1,(cp-trade["sl_price"])/rt)) if rt>0 else 0.5
+                barra_color = "#00ff9d" if prog>0.6 else ("#ffd60a" if prog>0.3 else "#ff4d6d")
                 st.markdown(f"""
-                <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:16px;margin-bottom:10px;'>
+                <div style='background:#0d1117;border:1px solid {ac}40;border-left:4px solid {ac};border-radius:10px;padding:16px;margin-bottom:10px;'>
                   <div style='display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;'>
                     <div>
-                      <span style='color:#fff;font-family:Space Mono;font-weight:700;font-size:15px;'>{trade["symbol"]}</span>
-                      <span style='color:#4b5563;font-size:11px;margin-left:8px;'>{trade["shares"]} uds · ${trade["buy_price"]:,.4f} · {trade["buy_date"]}</span>
-                      {f'<div style="color:#6b7280;font-size:10px;">{trade["notes"]}</div>' if trade["notes"] else ""}
+                      <div style='display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;'>
+                        <span style='color:#fff;font-family:Space Mono;font-weight:700;font-size:15px;'>{trade["symbol"]}</span>
+                        {alert_badge}
+                      </div>
+                      <span style='color:#4b5563;font-size:11px;'>{trade["shares"]} uds · Compra: ${trade["buy_price"]:,.4f} · {trade["buy_date"]}</span>
+                      {f'<div style="color:#6b7280;font-size:10px;margin-top:2px;">{trade["notes"]}</div>' if trade["notes"] else ""}
                     </div>
                     <div style='text-align:right;'>
                       <div style='color:#fff;font-family:Space Mono;font-size:16px;font-weight:700;'>${cp:,.4f}</div>
                       <div style='color:{pc};font-family:Space Mono;'>{upc:+.2f}% ({up:+,.2f} USD)</div>
+                      <div style='color:#4b5563;font-size:10px;margin-top:2px;'>Pico: ${trade.get("peak_price",trade["buy_price"]):,.4f}</div>
                     </div>
                   </div>
                   <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;font-family:Space Mono;font-size:10px;'>
                     <div style='background:#060a0f;border-radius:6px;padding:8px;text-align:center;'><div style='color:#4b5563;font-size:9px;'>COMPRA</div><div style='color:#9ca3af;'>${trade["buy_price"]:,.4f}</div></div>
-                    <div style='background:#060a0f;border:1px solid #00ff9d30;border-radius:6px;padding:8px;text-align:center;'><div style='color:#4b5563;font-size:9px;'>TP 🎯</div><div style='color:#00ff9d;'>${trade["tp_price"]:,.4f}</div></div>
-                    <div style='background:#060a0f;border:1px solid #ff4d6d30;border-radius:6px;padding:8px;text-align:center;'><div style='color:#4b5563;font-size:9px;'>SL 🛑</div><div style='color:#ff4d6d;'>${trade["sl_price"]:,.4f}</div></div>
+                    <div style='background:#060a0f;border:1px solid #00ff9d30;border-radius:6px;padding:8px;text-align:center;'><div style='color:#4b5563;font-size:9px;'>TP 🎯</div><div style='color:#00ff9d;'>${trade["tp_price"]:,.4f}</div><div style='color:#00ff9d;font-size:8px;'>+{trade["tp_pct"]:.1f}%</div></div>
+                    <div style='background:#060a0f;border:1px solid #ff4d6d30;border-radius:6px;padding:8px;text-align:center;'><div style='color:#4b5563;font-size:9px;'>SL 🛑</div><div style='color:#ff4d6d;'>${trade["sl_price"]:,.4f}</div><div style='color:#ff4d6d;font-size:8px;'>-{trade["sl_pct"]:.1f}%</div></div>
                     <div style='background:#060a0f;border:1px solid #1f2937;border-radius:6px;padding:8px;text-align:center;'><div style='color:#4b5563;font-size:9px;'>INVERTIDO</div><div style='color:#9ca3af;'>${trade["invested"]:,.2f}</div></div>
                   </div>
-                  <div style='background:#1f2937;border-radius:4px;height:5px;margin-bottom:8px;'>
-                    <div style='background:linear-gradient(90deg,#ff4d6d,#ffd60a,#00ff9d);border-radius:4px;height:5px;width:{prog*100:.1f}%;'></div>
+                  <div style='margin-bottom:6px;'>
+                    <div style='display:flex;justify-content:space-between;font-size:9px;color:#4b5563;margin-bottom:3px;'>
+                      <span>SL ${trade["sl_price"]:,.4f}</span>
+                      <span style='color:{barra_color};font-family:Space Mono;'>Posición: {prog*100:.0f}%</span>
+                      <span>TP ${trade["tp_price"]:,.4f}</span>
+                    </div>
+                    <div style='background:#1f2937;border-radius:4px;height:6px;'>
+                      <div style='background:{barra_color};border-radius:4px;height:6px;width:{prog*100:.1f}%;transition:width 0.3s;'></div>
+                    </div>
                   </div>
                   <div style='background:{ac}15;border:1px solid {ac}40;border-radius:6px;padding:8px 12px;font-size:11px;color:{ac};'>{am}</div>
                 </div>""",unsafe_allow_html=True)
@@ -856,14 +1192,14 @@ with t5:
                     if st.button("Confirmar cierre",key=f"close{oi}"): close_trade(oi,sp,sd); st.success("Cerrada."); st.rerun()
 
         if closed_t:
-            st.markdown("#### 📋 Historial")
+            st.markdown("#### 📋 Historial", unsafe_allow_html=True)
             df_hist=pd.DataFrame([{"Activo":t["symbol"],"Compra":f"${t['buy_price']:,.4f}","Venta":f"${t['sell_price']:,.4f}","Cant":t["shares"],"P&L":f"${t.get('pnl',0):+,.2f}","Rend":f"{t.get('pnl_pct',0):+.2f}%","Estado":t["status"]} for t in closed_t])
             st.dataframe(df_hist,use_container_width=True,hide_index=True)
         if st.button("🗑️ Borrar todo"): st.session_state.trades=[]; st.rerun()
 
 # ── TAB 6: ALERTAS Y ESCÁNER ───────────────────────────────────────────────────
 with t6:
-    st.markdown("### 🔔 Alertas Automáticas — 120+ activos vigilados")
+    st.markdown("### 🔔 Alertas Automáticas — 120+ activos vigilados", unsafe_allow_html=True)
     cfg2=st.session_state.email_config
 
     with st.expander("📖 Cómo configurar Gmail",expanded=not cfg2.get("active")):
@@ -876,7 +1212,7 @@ with t6:
 
     col_form, col_status = st.columns([1,1])
     with col_form:
-        st.markdown("**⚙️ Configuración**")
+        st.markdown("**⚙️ Configuración**", unsafe_allow_html=True)
         e_to   = st.text_input("📨 Correo destino", value=cfg2.get("to",""), placeholder="tu@correo.com",key="eto")
         e_from = st.text_input("📤 Tu Gmail",       value=cfg2.get("from",""), placeholder="tucorreo@gmail.com",key="efrom")
         e_pass = st.text_input("🔑 Contraseña app (16 letras)", value=cfg2.get("pass",""), type="password",key="epass")
@@ -898,7 +1234,7 @@ with t6:
                     st.success(msg) if ok else st.error(msg)
                 else: st.warning("Completa los campos.")
 
-        st.markdown("<br>**📤 Alerta manual**")
+        st.markdown("<div style='margin-top:12px;color:#9ca3af;font-size:13px;font-weight:600;'>📤 Alerta manual</div>", unsafe_allow_html=True)
         a_sym=st.selectbox("Activo",list(ALL_ASSETS.keys()),index=list(ALL_ASSETS.keys()).index(symbol),key="as2")
         a_type=st.radio("Tipo",["🟢 COMPRA","🔴 VENTA"],horizontal=True,key="atype")
         if st.button("📧 Enviar alerta",key="send_manual"):
@@ -951,14 +1287,23 @@ with t6:
           </div>
         </div>""",unsafe_allow_html=True)
 
-        c_sc1,c_sc2=st.columns(2)
+        c_sc1,c_sc2,c_sc3=st.columns(3)
         with c_sc1:
-            if st.button("🔍 Escanear ahora",key="scan_now"):
+            if st.button("🔍 Escanear mercado",key="scan_now"):
                 if sca:
                     with st.spinner("Escaneando 120+ activos..."): res=run_scanner(cfg2,st.session_state.trades)
                     st.success(f"✅ {len(res)} señales.") if res else st.info("Sin señales nuevas.")
                 else: st.warning("Activa alertas primero.")
         with c_sc2:
+            if st.button("💼 Revisar mis posiciones",key="check_positions"):
+                open_trades=[t for t in st.session_state.trades if t["status"]=="ABIERTA"]
+                if not open_trades: st.info("No tienes posiciones abiertas.")
+                elif not (e_to and e_from and e_pass): st.warning("Configura el correo primero.")
+                else:
+                    with st.spinner("Revisando tus inversiones..."):
+                        run_scanner(cfg2, st.session_state.trades)
+                    st.success("✅ Revisión completada. Revisa tu correo si hay alertas.")
+        with c_sc3:
             if st.button("🗑️ Limpiar log",key="clear_log"): st.session_state.scanner_results=[]; st.session_state.alert_log=[]; st.rerun()
 
         if st.session_state.alert_log:
@@ -968,7 +1313,7 @@ with t6:
 
     # ── HISTORIAL DE SEÑALES — BUG CORREGIDO: r["reason"] → r.get("razon","") ──
     if st.session_state.scanner_results:
-        st.markdown("<br>**📊 Señales detectadas (últimas 20)**")
+        st.markdown("<div style='margin-top:12px;color:#9ca3af;font-size:13px;font-weight:600;'>📊 Señales detectadas (últimas 20)</div>", unsafe_allow_html=True)
         for r in st.session_state.scanner_results[:20]:
             ic={"COMPRAR":"🟢","VENDER":"🔴","TP":"🎯","SL":"🛑"}.get(r.get("type",""),"📊")
             b_shown=r.get("broker","").split("(")[0].strip()
@@ -994,7 +1339,7 @@ with t6:
 
 # ── TAB 7: BROKERS ─────────────────────────────────────────────────────────────
 with t7:
-    st.markdown("### 🏦 Brokers — Cuál usar según lo que quieres invertir")
+    st.markdown("### 🏦 Brokers — Cuál usar según lo que quieres invertir", unsafe_allow_html=True)
     st.markdown(f"""
     <div style='background:linear-gradient(135deg,#00ff9d10,#0ea5e910);border:2px solid #00ff9d50;border-radius:12px;padding:18px;margin-bottom:16px;'>
       <div style='color:#00ff9d;font-size:10px;letter-spacing:2px;font-weight:700;margin-bottom:8px;'>⭐ PARA {symbol} LA APP RECOMIENDA</div>
