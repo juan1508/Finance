@@ -270,8 +270,39 @@ c6.metric("💰 Invertir",f"${invest_amt:,.0f}",f"{kelly_pct*100:.1f}% de ${port
 
 st.markdown("<br>",unsafe_allow_html=True)
 
+# ── SESSION STATE para portafolio personal ────────────────────────────────────
+if "trades" not in st.session_state:
+    st.session_state.trades = []  # lista de dicts con info de cada operación
+
+def add_trade(symbol, buy_price, shares, buy_date, tp_pct, sl_pct, notes):
+    st.session_state.trades.append({
+        "id": len(st.session_state.trades),
+        "symbol": symbol,
+        "buy_price": buy_price,
+        "shares": shares,
+        "invested": buy_price * shares,
+        "buy_date": str(buy_date),
+        "tp_price": round(buy_price * (1 + tp_pct/100), 2),
+        "sl_price": round(buy_price * (1 - sl_pct/100), 2),
+        "tp_pct": tp_pct,
+        "sl_pct": sl_pct,
+        "notes": notes,
+        "status": "ABIERTA",
+        "sell_price": None,
+        "sell_date": None,
+    })
+
+def close_trade(idx, sell_price, sell_date):
+    t = st.session_state.trades[idx]
+    t["sell_price"] = sell_price
+    t["sell_date"] = str(sell_date)
+    pnl = (sell_price - t["buy_price"]) * t["shares"]
+    t["status"] = "GANANCIA ✅" if pnl >= 0 else "PÉRDIDA ❌"
+    t["pnl"] = round(pnl, 2)
+    t["pnl_pct"] = round((sell_price - t["buy_price"]) / t["buy_price"] * 100, 2)
+
 # ── TABS ──────────────────────────────────────────────────────────────────────
-t1,t2,t3,t4,t5=st.tabs(["📊  Gráfica Principal","📅  Multi-Período","⚡  RSI & Bollinger","🧮  Análisis & Señal","🏦  Brokers"])
+t1,t2,t3,t4,t5,t6=st.tabs(["📊  Gráfica Principal","📅  Multi-Período","⚡  RSI & Bollinger","🧮  Análisis & Señal","💼  Mis Inversiones","🏦  Brokers"])
 
 with t1:
     df_show=df_1h if not df_1h.empty else df_1d
@@ -331,6 +362,288 @@ with t4:
         </div></div>""",unsafe_allow_html=True)
 
 with t5:
+    st.markdown("### 💼 Mis Inversiones — Tracker Personal")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Proyección del modelo para esta acción ────────────────────────────────
+    atr_val = last.get("atr", price_now * 0.02)
+    proj_tp  = round(price_now + atr_val * 2.5, 2)   # Take profit sugerido
+    proj_sl  = round(price_now - atr_val * 1.5, 2)   # Stop loss sugerido
+    proj_tp_pct = round((proj_tp - price_now) / price_now * 100, 1)
+    proj_sl_pct = round((price_now - proj_sl) / price_now * 100, 1)
+    rr_ratio    = round(proj_tp_pct / proj_sl_pct, 2) if proj_sl_pct > 0 else 0
+
+    # Horizonte temporal proyectado según MACD y MA
+    macd_v = last.get("macd", 0)
+    if sig["strength"] >= 65:
+        horizonte = "Corto plazo (1–5 días)"
+        horizonte_color = "#00ff9d"
+    elif sig["strength"] >= 50:
+        horizonte = "Mediano plazo (1–3 semanas)"
+        horizonte_color = "#ffd60a"
+    else:
+        horizonte = "Esperar mejor entrada"
+        horizonte_color = "#ff4d6d"
+
+    st.markdown(f"""
+    <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:20px;margin-bottom:16px;'>
+      <div style='color:#4b5563;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;font-family:Space Mono;'>
+        📡 PROYECCIÓN DEL MODELO — {symbol} @ ${price_now:,.2f}
+      </div>
+      <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;'>
+        <div style='background:#060a0f;border:1px solid #1f2937;border-radius:8px;padding:12px;text-align:center;'>
+          <div style='color:#4b5563;font-size:9px;letter-spacing:1px;'>SEÑAL ACTUAL</div>
+          <div style='color:{sig["color"]};font-family:Space Mono;font-size:18px;font-weight:700;margin-top:4px;'>{sig["signal"]}</div>
+          <div style='color:#4b5563;font-size:10px;'>Fuerza {sig["strength"]}%</div>
+        </div>
+        <div style='background:#060a0f;border:1px solid #00ff9d30;border-radius:8px;padding:12px;text-align:center;'>
+          <div style='color:#4b5563;font-size:9px;letter-spacing:1px;'>TAKE PROFIT 🎯</div>
+          <div style='color:#00ff9d;font-family:Space Mono;font-size:18px;font-weight:700;margin-top:4px;'>${proj_tp:,.2f}</div>
+          <div style='color:#00ff9d;font-size:10px;'>+{proj_tp_pct}% (ATR×2.5)</div>
+        </div>
+        <div style='background:#060a0f;border:1px solid #ff4d6d30;border-radius:8px;padding:12px;text-align:center;'>
+          <div style='color:#4b5563;font-size:9px;letter-spacing:1px;'>STOP LOSS 🛑</div>
+          <div style='color:#ff4d6d;font-family:Space Mono;font-size:18px;font-weight:700;margin-top:4px;'>${proj_sl:,.2f}</div>
+          <div style='color:#ff4d6d;font-size:10px;'>-{proj_sl_pct}% (ATR×1.5)</div>
+        </div>
+        <div style='background:#060a0f;border:1px solid #ffd60a30;border-radius:8px;padding:12px;text-align:center;'>
+          <div style='color:#4b5563;font-size:9px;letter-spacing:1px;'>RATIO R/R</div>
+          <div style='color:#ffd60a;font-family:Space Mono;font-size:18px;font-weight:700;margin-top:4px;'>{rr_ratio}:1</div>
+          <div style='color:{"#00ff9d" if rr_ratio>=1.5 else "#ff4d6d"};font-size:10px;'>{"✅ Favorable" if rr_ratio>=1.5 else "❌ No favorable"}</div>
+        </div>
+      </div>
+      <div style='background:#060a0f;border:1px solid #1f2937;border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;'>
+        <span style='font-size:14px;'>⏱️</span>
+        <div>
+          <span style='color:#4b5563;font-size:10px;'>HORIZONTE PROYECTADO: </span>
+          <span style='color:{horizonte_color};font-family:Space Mono;font-size:11px;font-weight:700;'>{horizonte}</span>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Formulario para registrar nueva inversión ─────────────────────────────
+    with st.expander("➕ Registrar nueva inversión", expanded=len(st.session_state.trades)==0):
+        st.markdown("<div style='color:#9ca3af;font-size:12px;margin-bottom:12px;'>Completa los datos de tu operación. El sistema calculará automáticamente el Take Profit y Stop Loss sugeridos.</div>", unsafe_allow_html=True)
+
+        fc1, fc2, fc3 = st.columns(3)
+        with fc1:
+            trade_symbol = st.selectbox("Acción", list(TOP_STOCKS.keys()),
+                index=list(TOP_STOCKS.keys()).index(symbol), key="trade_sym")
+            trade_shares = st.number_input("Cantidad de acciones", min_value=1, max_value=10000, value=10, key="trade_sh")
+        with fc2:
+            trade_buy_price = st.number_input("Precio de compra (USD)", min_value=0.01, value=float(round(price_now, 2)), step=0.01, key="trade_bp")
+            trade_buy_date  = st.date_input("Fecha de compra", value=pd.Timestamp.today(), key="trade_bd")
+        with fc3:
+            trade_tp = st.number_input("Take Profit %", min_value=0.5, max_value=100.0, value=float(proj_tp_pct), step=0.5, key="trade_tp")
+            trade_sl = st.number_input("Stop Loss %",   min_value=0.5, max_value=50.0,  value=float(proj_sl_pct), step=0.5, key="trade_sl")
+
+        trade_notes = st.text_input("Notas / Razón de la operación", placeholder="Ej: Cruce MA7>MA20, RSI en 28, rebote en soporte...", key="trade_notes")
+
+        # Preview
+        tp_price_prev = round(trade_buy_price * (1 + trade_tp/100), 2)
+        sl_price_prev = round(trade_buy_price * (1 - trade_sl/100), 2)
+        inv_total     = round(trade_buy_price * trade_shares, 2)
+        ganancia_pot  = round((tp_price_prev - trade_buy_price) * trade_shares, 2)
+        perdida_pot   = round((trade_buy_price - sl_price_prev) * trade_shares, 2)
+
+        st.markdown(f"""
+        <div style='background:#060a0f;border:1px solid #1f2937;border-radius:8px;padding:12px;margin:10px 0;
+                    display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-family:Space Mono;font-size:11px;'>
+          <div style='text-align:center;'><div style='color:#4b5563;font-size:9px;'>INVERTIDO</div><div style='color:#fff;'>${inv_total:,.2f}</div></div>
+          <div style='text-align:center;'><div style='color:#4b5563;font-size:9px;'>TP PRECIO</div><div style='color:#00ff9d;'>${tp_price_prev:,.2f}</div></div>
+          <div style='text-align:center;'><div style='color:#4b5563;font-size:9px;'>SL PRECIO</div><div style='color:#ff4d6d;'>${sl_price_prev:,.2f}</div></div>
+          <div style='text-align:center;'><div style='color:#4b5563;font-size:9px;'>GANANCIA POT.</div><div style='color:#00ff9d;'>+${ganancia_pot:,.2f}</div></div>
+          <div style='text-align:center;'><div style='color:#4b5563;font-size:9px;'>PÉRDIDA POT.</div><div style='color:#ff4d6d;'>-${perdida_pot:,.2f}</div></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("✅ Registrar Inversión", key="btn_add_trade"):
+            if trade_shares > 0 and trade_buy_price > 0:
+                add_trade(trade_symbol, trade_buy_price, trade_shares, trade_buy_date, trade_tp, trade_sl, trade_notes)
+                st.success(f"✅ Inversión en {trade_symbol} registrada correctamente.")
+                st.rerun()
+
+    # ── Tabla de operaciones ──────────────────────────────────────────────────
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    open_trades  = [t for t in st.session_state.trades if t["status"] == "ABIERTA"]
+    closed_trades= [t for t in st.session_state.trades if t["status"] != "ABIERTA"]
+
+    if not st.session_state.trades:
+        st.markdown("""
+        <div style='background:#0d1117;border:1px dashed #1f2937;border-radius:10px;padding:40px;text-align:center;'>
+          <div style='font-size:32px;margin-bottom:8px;'>📂</div>
+          <div style='color:#4b5563;font-family:Space Mono;font-size:12px;'>No hay operaciones registradas todavía.</div>
+          <div style='color:#374151;font-size:11px;margin-top:4px;'>Usa el formulario de arriba para registrar tu primera inversión.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # ── Resumen global ────────────────────────────────────────────────────
+        total_invested = sum(t["invested"] for t in st.session_state.trades)
+        total_pnl      = sum(t.get("pnl", 0) for t in closed_trades)
+        open_exposure  = sum(t["invested"] for t in open_trades)
+
+        sm1, sm2, sm3, sm4 = st.columns(4)
+        sm1.metric("Total Invertido",  f"${total_invested:,.2f}")
+        sm2.metric("Posiciones Abiertas", str(len(open_trades)))
+        sm3.metric("Operaciones Cerradas", str(len(closed_trades)))
+        sm4.metric("P&L Realizado", f"${total_pnl:+,.2f}", delta="ganancia" if total_pnl>=0 else "pérdida")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # ── Posiciones abiertas con estado en tiempo real ─────────────────────
+        if open_trades:
+            st.markdown("#### 🟢 Posiciones Abiertas")
+            for i, trade in enumerate(open_trades):
+                orig_idx = st.session_state.trades.index(trade)
+                # Intentar obtener precio actual
+                try:
+                    cur_price_data = fetch_data(trade["symbol"], "1d", "1h")
+                    cur_price = cur_price_data["close"].iloc[-1] if not cur_price_data.empty else trade["buy_price"]
+                except:
+                    cur_price = trade["buy_price"]
+
+                unreal_pnl = round((cur_price - trade["buy_price"]) * trade["shares"], 2)
+                unreal_pct = round((cur_price - trade["buy_price"]) / trade["buy_price"] * 100, 2)
+                pnl_color  = "#00ff9d" if unreal_pnl >= 0 else "#ff4d6d"
+
+                # Estado respecto a TP / SL
+                if cur_price >= trade["tp_price"]:
+                    alert_msg   = "🎯 ¡TAKE PROFIT ALCANZADO! Considera vender."
+                    alert_color = "#00ff9d"
+                    alert_bg    = "#00ff9d15"
+                elif cur_price <= trade["sl_price"]:
+                    alert_msg   = "🛑 STOP LOSS ALCANZADO. Evalúa cerrar posición."
+                    alert_color = "#ff4d6d"
+                    alert_bg    = "#ff4d6d15"
+                elif unreal_pct >= trade["tp_pct"] * 0.7:
+                    alert_msg   = "⚡ Cerca del Take Profit. Mantente atento."
+                    alert_color = "#ffd60a"
+                    alert_bg    = "#ffd60a10"
+                else:
+                    alert_msg   = "⏳ Posición activa. Sin señal de salida todavía."
+                    alert_color = "#4b5563"
+                    alert_bg    = "#1f293710"
+
+                # Progreso hacia TP y SL
+                range_total = trade["tp_price"] - trade["sl_price"]
+                progress    = max(0, min(1, (cur_price - trade["sl_price"]) / range_total)) if range_total > 0 else 0.5
+
+                st.markdown(f"""
+                <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:12px;'>
+                  <div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;'>
+                    <div>
+                      <span style='color:#fff;font-family:Space Mono;font-weight:700;font-size:16px;'>{trade["symbol"]}</span>
+                      <span style='color:#4b5563;font-size:11px;margin-left:10px;'>{trade["shares"]} acciones · compradas el {trade["buy_date"]}</span>
+                      {f'<div style="color:#6b7280;font-size:10px;margin-top:2px;font-style:italic;">{trade["notes"]}</div>' if trade["notes"] else ""}
+                    </div>
+                    <div style='text-align:right;'>
+                      <div style='color:#fff;font-family:Space Mono;font-size:18px;font-weight:700;'>${cur_price:,.2f}</div>
+                      <div style='color:{pnl_color};font-family:Space Mono;font-size:13px;'>{unreal_pct:+.2f}% ({unreal_pnl:+,.2f} USD)</div>
+                    </div>
+                  </div>
+                  <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;font-family:Space Mono;font-size:10px;'>
+                    <div style='background:#060a0f;border-radius:6px;padding:8px;text-align:center;'>
+                      <div style='color:#4b5563;font-size:9px;'>COMPRA</div>
+                      <div style='color:#9ca3af;'>${trade["buy_price"]:,.2f}</div>
+                    </div>
+                    <div style='background:#060a0f;border:1px solid #00ff9d30;border-radius:6px;padding:8px;text-align:center;'>
+                      <div style='color:#4b5563;font-size:9px;'>TAKE PROFIT 🎯</div>
+                      <div style='color:#00ff9d;'>${trade["tp_price"]:,.2f} (+{trade["tp_pct"]}%)</div>
+                    </div>
+                    <div style='background:#060a0f;border:1px solid #ff4d6d30;border-radius:6px;padding:8px;text-align:center;'>
+                      <div style='color:#4b5563;font-size:9px;'>STOP LOSS 🛑</div>
+                      <div style='color:#ff4d6d;'>${trade["sl_price"]:,.2f} (-{trade["sl_pct"]}%)</div>
+                    </div>
+                    <div style='background:#060a0f;border-radius:6px;padding:8px;text-align:center;'>
+                      <div style='color:#4b5563;font-size:9px;'>INVERTIDO</div>
+                      <div style='color:#9ca3af;'>${trade["invested"]:,.2f}</div>
+                    </div>
+                  </div>
+                  <div style='margin-bottom:10px;'>
+                    <div style='display:flex;justify-content:space-between;font-size:9px;color:#4b5563;margin-bottom:4px;'>
+                      <span>SL ${trade["sl_price"]:,.2f}</span>
+                      <span>Precio actual ${cur_price:,.2f}</span>
+                      <span>TP ${trade["tp_price"]:,.2f}</span>
+                    </div>
+                    <div style='background:#1f2937;border-radius:4px;height:6px;position:relative;'>
+                      <div style='background:linear-gradient(90deg,#ff4d6d,#ffd60a,#00ff9d);border-radius:4px;height:6px;width:100%;opacity:0.3;'></div>
+                      <div style='position:absolute;top:-3px;left:{progress*100:.1f}%;transform:translateX(-50%);
+                                  width:12px;height:12px;background:#fff;border-radius:50%;border:2px solid #0d1117;'></div>
+                    </div>
+                  </div>
+                  <div style='background:{alert_bg};border:1px solid {alert_color}40;border-radius:6px;padding:8px 12px;font-size:11px;color:{alert_color};'>
+                    {alert_msg}
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Botón de cerrar posición
+                with st.expander(f"💰 Cerrar posición {trade['symbol']} #{i+1}"):
+                    sc1, sc2 = st.columns(2)
+                    with sc1:
+                        sell_p = st.number_input("Precio de venta (USD)", min_value=0.01, value=float(round(cur_price,2)), step=0.01, key=f"sell_p_{orig_idx}")
+                    with sc2:
+                        sell_d = st.date_input("Fecha de venta", value=pd.Timestamp.today(), key=f"sell_d_{orig_idx}")
+                    pnl_preview = round((sell_p - trade["buy_price"]) * trade["shares"], 2)
+                    pnl_pct_preview = round((sell_p - trade["buy_price"]) / trade["buy_price"] * 100, 2)
+                    st.markdown(f"""
+                    <div style='background:#060a0f;border:1px solid #1f2937;border-radius:6px;padding:10px;
+                                font-family:Space Mono;font-size:12px;margin:8px 0;text-align:center;'>
+                      P&L: <span style='color:{"#00ff9d" if pnl_preview>=0 else "#ff4d6d"};font-size:16px;font-weight:700;'>
+                        {pnl_preview:+,.2f} USD ({pnl_pct_preview:+.2f}%)
+                      </span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button(f"Confirmar cierre de {trade['symbol']}", key=f"close_{orig_idx}"):
+                        close_trade(orig_idx, sell_p, sell_d)
+                        st.success("Posición cerrada correctamente.")
+                        st.rerun()
+
+        # ── Historial de operaciones cerradas ─────────────────────────────────
+        if closed_trades:
+            st.markdown("<br>#### 📋 Historial de Operaciones Cerradas")
+            rows = []
+            for t in closed_trades:
+                rows.append({
+                    "Acción": t["symbol"],
+                    "Compra": f"${t['buy_price']:,.2f}",
+                    "Venta": f"${t['sell_price']:,.2f}",
+                    "Acciones": t["shares"],
+                    "Invertido": f"${t['invested']:,.2f}",
+                    "P&L": f"${t.get('pnl',0):+,.2f}",
+                    "Rendimiento": f"{t.get('pnl_pct',0):+.2f}%",
+                    "Estado": t["status"],
+                    "Comprado": t["buy_date"],
+                    "Vendido": t["sell_date"],
+                })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+            # Gráfico P&L histórico
+            if len(closed_trades) > 1:
+                pnl_vals  = [t.get("pnl", 0) for t in closed_trades]
+                pnl_syms  = [f"{t['symbol']} {t['sell_date']}" for t in closed_trades]
+                pnl_cum   = pd.Series(pnl_vals).cumsum().tolist()
+                fig_pnl = go.Figure()
+                fig_pnl.add_trace(go.Bar(x=pnl_syms, y=pnl_vals, name="P&L por operación",
+                    marker_color=["#00ff9d" if v>=0 else "#ff4d6d" for v in pnl_vals]))
+                fig_pnl.add_trace(go.Scatter(x=pnl_syms, y=pnl_cum, name="P&L acumulado",
+                    line=dict(color="#ffd60a", width=2), mode="lines+markers"))
+                fig_pnl.update_layout(template="plotly_dark", plot_bgcolor="#0d1117", paper_bgcolor="#0d1117",
+                    font=dict(family="Space Mono", color="#9ca3af", size=10),
+                    height=280, margin=dict(l=0,r=0,t=30,b=0),
+                    title=dict(text="Historial de P&L", font=dict(color="#fff",size=13)),
+                    legend=dict(bgcolor="#0d1117",bordercolor="#1f2937",borderwidth=1))
+                fig_pnl.update_xaxes(gridcolor="#1f2937"); fig_pnl.update_yaxes(gridcolor="#1f2937")
+                st.plotly_chart(fig_pnl, use_container_width=True)
+
+        # Botón para limpiar todo
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🗑️  Borrar todo el historial"):
+            st.session_state.trades = []
+            st.rerun()
+
+with t6:
     st.markdown("### 🏦 Brokers Recomendados para Invertir")
     st.markdown("<br>",unsafe_allow_html=True)
     cols=st.columns(3); pal=["#00ff9d","#0ea5e9","#ffd60a","#a78bfa","#f97316","#ec4899"]
