@@ -502,36 +502,203 @@ if cfg["active"] and cfg["to"] and cfg["from"] and cfg["pass"]:
                     st.session_state.alert_log.append({"time":datetime.now().strftime("%H:%M"),"msg":f"🛑 Alerta SL enviada para {t['symbol']}","color":"#ff4d6d"})
         except: pass
 
-# ─── HEADER ───────────────────────────────────────────────────────────────────
-sc=sig["color"]
+# ─── HEADER — variables pre-calculadas para evitar f-string con ternarios ────
+sc           = sig["color"]
+sig_label    = sig["signal"]
+sig_emoji    = "🟢" if sig_label == "COMPRAR" else ("🔴" if sig_label == "VENDER" else "🟡")
+price_arrow  = "▲" if price_chg >= 0 else "▼"
+price_color  = "#00ff9d" if price_chg >= 0 else "#ff4d6d"
+riesgo_val   = ALL_STOCKS[symbol]["riesgo"]
+riesgo_bg    = "#00ff9d20" if riesgo_val == "Bajo" else ("#ffd60a20" if riesgo_val == "Medio" else "#ff4d6d20")
+riesgo_color = "#00ff9d"   if riesgo_val == "Bajo" else ("#ffd60a"   if riesgo_val == "Medio" else "#ff4d6d")
+div_badge    = "<span style='background:#00ff9d20;color:#00ff9d;padding:2px 8px;border-radius:3px;font-size:10px;'>💵 Dividendo</span>" if ALL_STOCKS[symbol]["dividendo"] else ""
+stock_name   = ALL_STOCKS[symbol]["name"]
+stock_sector = ALL_STOCKS[symbol]["sector"]
+
 st.markdown(f"""
 <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:20px 24px;margin-bottom:16px;'>
-<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;'>
-  <div>
-    <div style='display:flex;align-items:center;gap:12px;flex-wrap:wrap;'>
-      <span style='color:#fff;font-family:Space Mono;font-weight:700;font-size:24px;'>{symbol}</span>
-      <span style='color:#6b7280;font-size:14px;'>{ALL_STOCKS[symbol]['name']}</span>
-      <span style='background:#1f2937;color:#9ca3af;padding:2px 8px;border-radius:3px;font-size:10px;'>{ALL_STOCKS[symbol]['sector']}</span>
-      <span style='background:{"#00ff9d20" if ALL_STOCKS[symbol]["riesgo"]=="Bajo" else "#ffd60a20" if ALL_STOCKS[symbol]["riesgo"]=="Medio" else "#ff4d6d20"};
-                  color:{"#00ff9d" if ALL_STOCKS[symbol]["riesgo"]=="Bajo" else "#ffd60a" if ALL_STOCKS[symbol]["riesgo"]=="Medio" else "#ff4d6d"};
-                  padding:2px 8px;border-radius:3px;font-size:10px;'>Riesgo {ALL_STOCKS[symbol]["riesgo"]}</span>
-      {"<span style='background:#00ff9d20;color:#00ff9d;padding:2px 8px;border-radius:3px;font-size:10px;'>💵 Dividendo</span>" if ALL_STOCKS[symbol]["dividendo"] else ""}
+  <div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;'>
+    <div>
+      <div style='display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;'>
+        <span style='color:#fff;font-family:Space Mono;font-weight:700;font-size:24px;'>{symbol}</span>
+        <span style='color:#6b7280;font-size:14px;'>{stock_name}</span>
+        <span style='background:#1f2937;color:#9ca3af;padding:2px 8px;border-radius:3px;font-size:10px;'>{stock_sector}</span>
+        <span style='background:{riesgo_bg};color:{riesgo_color};padding:2px 8px;border-radius:3px;font-size:10px;'>Riesgo {riesgo_val}</span>
+        {div_badge}
+      </div>
+      <div style='display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;'>
+        <span style='color:#fff;font-family:Space Mono;font-size:34px;font-weight:700;'>${price_now:,.2f}</span>
+        <span style='color:{price_color};font-family:Space Mono;font-size:16px;'>{price_arrow} {abs(price_chg):.2f}%</span>
+      </div>
     </div>
-    <div style='display:flex;align-items:baseline;gap:12px;margin-top:4px;flex-wrap:wrap;'>
-      <span style='color:#fff;font-family:Space Mono;font-size:34px;font-weight:700;'>${price_now:,.2f}</span>
-      <span style='color:{"#00ff9d" if price_chg>=0 else "#ff4d6d"};font-family:Space Mono;font-size:16px;'>
-        {"▲" if price_chg>=0 else "▼"} {abs(price_chg):.2f}%
-      </span>
+    <div style='text-align:right;'>
+      <div style='background:{sc}20;border:2px solid {sc};color:{sc};padding:10px 24px;border-radius:8px;
+                  font-family:Space Mono;font-size:20px;font-weight:700;letter-spacing:2px;'>
+        {sig_emoji} {sig_label}
+      </div>
+      <div style='color:#6b7280;font-size:11px;margin-top:6px;'>Fuerza de señal: {sig["strength"]}%</div>
     </div>
-  </div>
-  <div style='text-align:right;'>
-    <div style='background:{sc}20;border:2px solid {sc};color:{sc};padding:10px 24px;border-radius:8px;
-                font-family:Space Mono;font-size:20px;font-weight:700;letter-spacing:2px;'>
-      {"🟢" if sig["signal"]=="COMPRAR" else "🔴" if sig["signal"]=="VENDER" else "🟡"} {sig["signal"]}
-    </div>
-    <div style='color:#6b7280;font-size:11px;margin-top:6px;'>Fuerza de señal: {sig["strength"]}%</div>
   </div>
 </div>
+""", unsafe_allow_html=True)
+
+# ─── PANEL DE CONCLUSIONES — cuándo y por qué invertir ───────────────────────
+def build_conclusions(df, sig, price_now, proj_tp, proj_sl, symbol, stock_info):
+    """Genera conclusiones legibles en español sobre el momento de inversión."""
+    last = df.iloc[-1]
+    rsi_v   = last.get("rsi", 50)
+    ma7     = last.get("ma7",  0)
+    ma20    = last.get("ma20", 0)
+    ma50    = last.get("ma50", 0)
+    macd_v  = last.get("macd", 0)
+    macd_s  = last.get("macd_signal", 0)
+    bb_up   = last.get("bb_upper", price_now)
+    bb_low  = last.get("bb_lower", price_now)
+    bb_mid  = last.get("bb_mid",   price_now)
+    atr_v   = last.get("atr", price_now * 0.02)
+
+    items = []
+
+    # ── 1. Cruce de medias móviles ────────────────────────────────────────────
+    if ma7 > 0 and ma20 > 0:
+        diff_pct = abs(ma7 - ma20) / ma20 * 100
+        if ma7 > ma20:
+            if diff_pct < 0.5:
+                items.append(("🔀", "Cruce MA7 × MA20 reciente", "COMPRA",
+                    f"La media de 7 días (${ma7:,.2f}) acaba de cruzar por encima de la de 20 días (${ma20:,.2f}). "
+                    f"Diferencia de solo {diff_pct:.1f}% — el cruce es muy fresco. BUEN momento de entrada.","#00ff9d"))
+            else:
+                items.append(("📈", "Tendencia alcista activa", "POSITIVO",
+                    f"MA7 (${ma7:,.2f}) está por encima de MA20 (${ma20:,.2f}) con {diff_pct:.1f}% de diferencia. "
+                    f"La tendencia de corto plazo es alcista y tiene momentum.","#00ff9d"))
+        else:
+            items.append(("📉", "Cruce bajista MA7 × MA20", "ESPERAR",
+                f"MA7 (${ma7:,.2f}) está por debajo de MA20 (${ma20:,.2f}). "
+                f"La presión vendedora domina. Espera que MA7 vuelva a cruzar hacia arriba antes de entrar.","#ff4d6d"))
+
+    # ── 2. Precio vs MA50 (tendencia de fondo) ────────────────────────────────
+    if ma50 > 0:
+        dist50 = (price_now - ma50) / ma50 * 100
+        if price_now > ma50:
+            items.append(("🏔️", "Precio sobre MA50 — tendencia estructural alcista", "POSITIVO",
+                f"El precio (${price_now:,.2f}) está un {dist50:.1f}% por encima de la media de 50 días (${ma50:,.2f}). "
+                f"La tendencia de fondo es alcista. Las correcciones son oportunidades de compra.","#00ff9d"))
+        else:
+            items.append(("⚠️", "Precio bajo MA50 — tendencia estructural bajista", "PRECAUCIÓN",
+                f"El precio está un {abs(dist50):.1f}% por debajo de MA50 (${ma50:,.2f}). "
+                f"La tendencia de fondo es bajista. Solo considera comprar con señales muy fuertes.","#ffd60a"))
+
+    # ── 3. RSI ────────────────────────────────────────────────────────────────
+    if rsi_v < 30:
+        items.append(("🟢", f"RSI en zona de SOBREVENTA ({rsi_v:.0f})", "COMPRA FUERTE",
+            f"El RSI de {rsi_v:.0f} indica que la acción cayó demasiado rápido. "
+            f"Históricamente cuando el RSI baja de 30 hay un rebote. "
+            f"Es una de las mejores señales de entrada. Combina con soporte en Bollinger.", "#00ff9d"))
+    elif rsi_v > 70:
+        items.append(("🔴", f"RSI en zona de SOBRECOMPRA ({rsi_v:.0f})", "VENDER / ESPERAR",
+            f"El RSI de {rsi_v:.0f} indica que la acción subió demasiado rápido sin descanso. "
+            f"Alta probabilidad de corrección a la baja. Evita comprar ahora, espera que RSI baje a zona 40–55.", "#ff4d6d"))
+    elif 40 <= rsi_v <= 60:
+        items.append(("🟡", f"RSI en zona neutral ({rsi_v:.0f})", "NEUTRAL",
+            f"RSI de {rsi_v:.0f} en zona central. No hay señal fuerte de sobrecompra ni sobreventa. "
+            f"La decisión depende más del cruce de medias y el MACD.", "#ffd60a"))
+    else:
+        rsi_dir = "recuperándose" if rsi_v > 50 else "debilitándose"
+        items.append(("🟡", f"RSI {rsi_v:.0f} — {rsi_dir}", "NEUTRAL",
+            f"RSI en {rsi_v:.0f}, {rsi_dir}. Observa si continúa la dirección actual para confirmar señal.", "#ffd60a"))
+
+    # ── 4. Bandas de Bollinger ────────────────────────────────────────────────
+    bb_pos = (price_now - bb_low) / (bb_up - bb_low) * 100 if (bb_up - bb_low) > 0 else 50
+    if price_now <= bb_low:
+        items.append(("🎯", "Precio tocando banda INFERIOR de Bollinger", "ENTRADA IDEAL",
+            f"El precio (${price_now:,.2f}) tocó la banda inferior (${bb_low:,.2f}). "
+            f"Esto indica un nivel de soporte estadístico fuerte. En el 85% de los casos el precio rebota "
+            f"hacia la banda media (${bb_mid:,.2f}). Excelente punto de entrada.", "#00ff9d"))
+    elif price_now >= bb_up:
+        items.append(("🚨", "Precio tocando banda SUPERIOR de Bollinger", "TOMAR GANANCIAS",
+            f"El precio (${price_now:,.2f}) alcanzó la banda superior (${bb_up:,.2f}). "
+            f"Zona de resistencia estadística. Alta probabilidad de retroceso hacia ${bb_mid:,.2f}. "
+            f"Si ya tienes posición abierta, considera tomar ganancias parciales.", "#ff4d6d"))
+    else:
+        items.append(("📊", f"Precio en posición {bb_pos:.0f}% dentro del canal Bollinger", "INFO",
+            f"El precio está al {bb_pos:.0f}% del recorrido entre banda inferior (${bb_low:,.2f}) "
+            f"y superior (${bb_up:,.2f}). La banda media es ${bb_mid:,.2f}. "
+            f"{'Por encima del centro — momentum positivo.' if bb_pos > 50 else 'Por debajo del centro — presión vendedora.'}", "#0ea5e9"))
+
+    # ── 5. MACD ───────────────────────────────────────────────────────────────
+    if macd_v > 0 and macd_v > macd_s:
+        items.append(("⚡", "MACD positivo con momentum creciente", "POSITIVO",
+            f"El MACD ({macd_v:.3f}) está por encima de su línea de señal ({macd_s:.3f}) y en territorio positivo. "
+            f"Indica que la fuerza compradora está acelerando. Buen acompañamiento para señal de compra.", "#00ff9d"))
+    elif macd_v < 0 and macd_v < macd_s:
+        items.append(("💤", "MACD negativo con momentum bajista", "NEGATIVO",
+            f"El MACD ({macd_v:.3f}) por debajo de su señal ({macd_s:.3f}) en terreno negativo. "
+            f"La presión vendedora supera a la compradora. Espera cruce del MACD hacia arriba para confirmar entrada.", "#ff4d6d"))
+    else:
+        items.append(("🔄", "MACD en transición", "OBSERVAR",
+            f"MACD ({macd_v:.3f}) cruzando su línea de señal ({macd_s:.3f}). "
+            f"{'Posible inicio de tendencia alcista.' if macd_v > macd_s else 'Posible inicio de debilidad.'}", "#ffd60a"))
+
+    # ── 6. Conclusión final ───────────────────────────────────────────────────
+    s = sig["strength"]
+    if s >= 70:
+        concl = ("🚀", "MOMENTO ÓPTIMO DE COMPRA",
+            f"Múltiples indicadores alineados a favor. Con ${price_now:,.2f} el modelo proyecta "
+            f"Take Profit en ${proj_tp:,.2f} (+{(proj_tp-price_now)/price_now*100:.1f}%) y "
+            f"Stop Loss en ${proj_sl:,.2f} (-{(price_now-proj_sl)/price_now*100:.1f}%). "
+            f"Fuerza de señal: {s}%.", "#00ff9d")
+    elif s >= 55:
+        concl = ("👍", "CONDICIONES FAVORABLES — entrada con cautela",
+            f"Señales mayoritariamente positivas pero no todas alineadas. "
+            f"Puedes entrar con posición reducida (50% del monto Kelly). "
+            f"TP sugerido: ${proj_tp:,.2f} · SL: ${proj_sl:,.2f}.", "#ffd60a")
+    elif s >= 40:
+        concl = ("⏸️", "ZONA NEUTRAL — esperar mejor momento",
+            f"Las señales están divididas. No hay ventaja estadística clara en este momento. "
+            f"Espera que RSI baje de 40 o que haya un cruce claro de medias móviles antes de entrar.", "#ffd60a")
+    else:
+        concl = ("🛑", "SEÑAL DE VENTA / NO ENTRAR",
+            f"Los indicadores muestran presión bajista dominante (fuerza {s}%). "
+            f"Si tienes posición abierta, considera protegerla con Stop Loss en ${proj_sl:,.2f}. "
+            f"No abras posiciones nuevas en este momento.", "#ff4d6d")
+
+    return items, concl
+
+conclusions, final_concl = build_conclusions(df_1d, sig, price_now, proj_tp, proj_sl, symbol, ALL_STOCKS[symbol])
+
+# Renderizar panel de conclusiones
+st.markdown(f"""
+<div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:0;margin-bottom:16px;overflow:hidden;'>
+  <div style='background:#060a0f;padding:12px 20px;border-bottom:1px solid #1f2937;display:flex;align-items:center;gap:10px;'>
+    <span style='font-size:16px;'>🧠</span>
+    <span style='color:#fff;font-family:Space Mono;font-weight:700;font-size:13px;letter-spacing:1px;'>ANÁLISIS AUTOMÁTICO — {symbol} · ¿Cuándo y por qué invertir?</span>
+  </div>
+  <div style='padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;'>
+""", unsafe_allow_html=True)
+
+for icon, title, label, desc, color in conclusions:
+    label_bg = color + "20"
+    st.markdown(f"""
+    <div style='background:#060a0f;border:1px solid #1f2937;border-left:3px solid {color};border-radius:6px;padding:12px 14px;'>
+      <div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;'>
+        <span style='color:#fff;font-size:12px;font-weight:600;'>{icon} {title}</span>
+        <span style='background:{label_bg};color:{color};padding:2px 8px;border-radius:3px;font-size:9px;font-family:Space Mono;font-weight:700;letter-spacing:1px;'>{label}</span>
+      </div>
+      <div style='color:#6b7280;font-size:11px;line-height:1.7;'>{desc}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Conclusión final destacada
+fc_icon, fc_title, fc_desc, fc_color = final_concl
+fc_bg = fc_color + "15"
+st.markdown(f"""
+  </div>
+  <div style='padding:0 20px 16px;'>
+    <div style='background:{fc_bg};border:2px solid {fc_color};border-radius:8px;padding:16px 18px;'>
+      <div style='color:{fc_color};font-family:Space Mono;font-size:14px;font-weight:700;margin-bottom:8px;'>{fc_icon} CONCLUSIÓN: {fc_title}</div>
+      <div style='color:#9ca3af;font-size:12px;line-height:1.8;'>{fc_desc}</div>
+    </div>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
