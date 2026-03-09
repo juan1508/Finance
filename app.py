@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -9,6 +10,12 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import time
 from datetime import datetime
+
+def _html(content, height=None):
+    """Render raw HTML reliably using Streamlit components."""
+    import streamlit.components.v1 as _comp
+    _comp.html(content, height=height or max(100, content.count('<div') * 40 + 80), scrolling=False)
+
 
 st.set_page_config(page_title="Quantum Trade | AI Analytics", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
@@ -743,13 +750,14 @@ def close_trade(idx, sell_price, sell_date):
 
 # ─── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("""
+    _chtml = """
     <div style='text-align:center;padding:12px 0 8px;'>
       <div style='font-size:32px;'>📈</div>
       <div style='color:#fff;font-family:Space Mono;font-weight:700;font-size:15px;letter-spacing:2px;'>QUANTUM TRADE</div>
       <div style='color:#4b5563;font-size:9px;letter-spacing:3px;'>120+ ACTIVOS · AI ANALYTICS</div>
     </div><hr style='border-color:#1f2937;margin:8px 0 12px;'>
-    """, unsafe_allow_html=True)
+    """
+    components.html(_chtml, height=280, scrolling=False)
 
     tipo_filter   = st.selectbox("📦 Tipo de activo", ["Todos","Acción","ETF","Cripto","Forex","Commodity","Índice"])
     sector_filter = st.selectbox("🏭 Sector", ["Todos","Tecnología","Finanzas","Salud","Consumo","Energía","ETF Broad","ETF Dividend","ETF Commodity","Cripto L1","Cripto Pagos","Forex Major","Forex LATAM","Metales","Agrícola","Automotriz","Logística"])
@@ -767,17 +775,19 @@ with st.sidebar:
     info = ALL_ASSETS[symbol]
     tipo_color = {"Acción":"#0ea5e9","ETF":"#00ff9d","Cripto":"#ffd60a","Forex":"#a78bfa","Commodity":"#f97316","Índice":"#6b7280"}.get(info["tipo"],"#6b7280")
     riesgo_color = {"Bajo":"#00ff9d","Medio":"#ffd60a","Alto":"#f97316","Muy Alto":"#ff4d6d"}.get(info["riesgo"],"#6b7280")
-    st.markdown(f"""
+    _sb_div_badge = "<span style='background:#00ff9d20;color:#00ff9d;padding:2px 7px;border-radius:3px;font-size:10px;'>💵 Div</span>" if info.get("div") else ""
+    _chtml = f"""
     <div style='background:#0d1117;border:1px solid #1f2937;border-radius:6px;padding:10px;margin:4px 0 12px;'>
       <div style='display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;'>
         <span style='background:{tipo_color}20;color:{tipo_color};padding:2px 7px;border-radius:3px;font-size:10px;'>{info["tipo"]}</span>
         <span style='background:{riesgo_color}20;color:{riesgo_color};padding:2px 7px;border-radius:3px;font-size:10px;'>Riesgo {info["riesgo"]}</span>
-        {"<span style='background:#00ff9d20;color:#00ff9d;padding:2px 7px;border-radius:3px;font-size:10px;'>💵 Div</span>" if info.get("div") else ""}
+        {_sb_div_badge}
       </div>
       <div style='color:#6b7280;font-size:10px;line-height:1.5;'>{info["desc"]}</div>
       <div style='color:#4b5563;font-size:10px;margin-top:4px;'>🏦 {info["broker"]}</div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    components.html(_chtml, height=280, scrolling=False)
 
     portfolio = st.number_input("💰 Capital disponible (USD)", min_value=1, max_value=10_000_000, value=100, step=10)
     st.session_state["portfolio_val"] = portfolio
@@ -793,7 +803,7 @@ with st.sidebar:
 
     secs_left = max(0, SCAN_INTERVAL - (time.time()-st.session_state.last_scan_time))
     pct = int((1-secs_left/SCAN_INTERVAL)*100)
-    st.markdown(f"""
+    _chtml = f"""
     <div style='margin-top:12px;background:#0d1117;border:1px solid #1f2937;border-radius:6px;padding:8px 10px;'>
       <div style='display:flex;justify-content:space-between;font-size:10px;color:#4b5563;margin-bottom:4px;'>
         <span>🔍 Escáner ({len(ALL_ASSETS)} activos)</span>
@@ -804,7 +814,8 @@ with st.sidebar:
       </div>
     </div>
     <div style='color:#4b5563;font-size:9px;margin-top:8px;'>Yahoo Finance · Datos cada 60s<br>Indicadores: MA·RSI·MACD·Bollinger·ATR·Kelly</div>
-    """, unsafe_allow_html=True)
+    """
+    components.html(_chtml, height=330, scrolling=False)
 
 # ─── CARGAR DATOS ──────────────────────────────────────────────────────────────
 with st.spinner(f"Cargando {symbol}..."):
@@ -835,7 +846,8 @@ price_arrow = "▲" if price_chg>=0 else "▼"
 price_color = "#00ff9d" if price_chg>=0 else "#ff4d6d"
 broker_recom = get_broker_for_asset(info, sl)
 
-st.markdown(f"""
+_div_badge = "<span style='background:#00ff9d20;color:#00ff9d;padding:2px 7px;border-radius:3px;font-size:10px;'>💵 Dividendo</span>" if info.get("div") else ""
+_header_html = f"""
 <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:18px 22px;margin-bottom:12px;'>
   <div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;'>
     <div>
@@ -844,7 +856,7 @@ st.markdown(f"""
         <span style='color:#6b7280;font-size:13px;'>{info["name"]}</span>
         <span style='background:{tipo_color}20;color:{tipo_color};padding:2px 7px;border-radius:3px;font-size:10px;'>{info["tipo"]}</span>
         <span style='background:{riesgo_color}20;color:{riesgo_color};padding:2px 7px;border-radius:3px;font-size:10px;'>Riesgo {info["riesgo"]}</span>
-        {"<span style='background:#00ff9d20;color:#00ff9d;padding:2px 7px;border-radius:3px;font-size:10px;'>💵 Dividendo</span>" if info.get("div") else ""}
+        {_div_badge}
       </div>
       <div style='display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;'>
         <span style='color:#fff;font-family:Space Mono;font-size:32px;font-weight:700;'>${price_now:,.4f}</span>
@@ -853,16 +865,15 @@ st.markdown(f"""
       <div style='color:#4b5563;font-size:11px;margin-top:4px;'>🏦 Broker recomendado: <span style='color:#9ca3af;'>{broker_recom}</span></div>
     </div>
     <div style='text-align:right;'>
-      <div style='background:{sc}20;border:2px solid {sc};color:{sc};padding:10px 22px;border-radius:8px;
-                  font-family:Space Mono;font-size:18px;font-weight:700;letter-spacing:2px;'>
+      <div style='background:{sc}20;border:2px solid {sc};color:{sc};padding:10px 22px;border-radius:8px;font-family:Space Mono;font-size:18px;font-weight:700;letter-spacing:2px;'>
         {sig_emoji} {sl}
       </div>
       <div style='color:#6b7280;font-size:11px;margin-top:5px;'>Fuerza: {sig["strength"]}%</div>
       <div style='color:#4b5563;font-size:10px;margin-top:2px;'>TP: <span style='color:#00ff9d;'>${proj_tp:,.4f}</span> · SL: <span style='color:#ff4d6d;'>${proj_sl:,.4f}</span></div>
     </div>
   </div>
-</div>
-""", unsafe_allow_html=True)
+</div>"""
+components.html(_header_html, height=120)
 
 # ─── MÉTRICAS ──────────────────────────────────────────────────────────────────
 rsi_v = float(last.get("rsi",50)) if pd.notna(last.get("rsi")) else 50.0
@@ -956,7 +967,7 @@ with t4:
             color="#00ff9d" if "✅" in r else ("#ff4d6d" if "❌" in r else "#9ca3af")
             st.markdown(f"<div style='color:{color};font-size:12px;padding:4px 0;font-family:Space Mono;'>{r}</div>",unsafe_allow_html=True)
         s=sig["strength"]
-        st.markdown(f"""<div style='margin-top:14px;'>
+        _chtml = f"""<div style='margin-top:14px;'>
         <div style='color:#4b5563;font-size:9px;letter-spacing:2px;margin-bottom:6px;'>FUERZA DE SEÑAL</div>
         <div style='background:#1f2937;border-radius:4px;height:8px;'>
           <div style='background:{sig["color"]};border-radius:4px;height:8px;width:{s}%;'></div>
@@ -964,17 +975,19 @@ with t4:
         <div style='color:{sig["color"]};font-family:Space Mono;font-size:22px;font-weight:700;margin-top:6px;'>{s}%</div>
         <div style='color:#4b5563;font-size:11px;margin-top:10px;'>🏦 Broker recomendado:</div>
         <div style='color:#fff;font-size:13px;font-weight:600;margin-top:3px;'>{broker_recom}</div>
-        </div>""", unsafe_allow_html=True)
+        </div>"""
+        components.html(_chtml, height=430, scrolling=False)
     with cr:
         st.markdown("### 🧮 Kelly Criterion", unsafe_allow_html=True)
-        st.markdown(f"""<div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:18px;'>
+        _chtml = f"""<div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:18px;'>
         <div style='color:#ffd60a;font-family:Space Mono;font-size:38px;font-weight:700;text-align:center;'>{kelly_pct*100:.1f}%</div>
         <div style='color:#4b5563;font-size:11px;text-align:center;'>del capital a invertir</div>
         <div style='text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #1f2937;'>
           <div style='color:#6b7280;font-size:11px;'>Monto en {symbol}</div>
           <div style='color:{sig["color"]};font-family:Space Mono;font-size:26px;font-weight:700;'>${invest_amt:,.2f}</div>
           <div style='color:#4b5563;font-size:10px;margin-top:6px;'>TP → <span style='color:#00ff9d;'>${proj_tp:,.4f}</span> · SL → <span style='color:#ff4d6d;'>${proj_sl:,.4f}</span></div>
-        </div></div>""", unsafe_allow_html=True)
+        </div></div>"""
+        components.html(_chtml, height=430, scrolling=False)
 
     st.markdown("<br><h3 style='color:#fff;font-family:Space Mono,monospace;'>🧠 Conclusiones — ¿Cuándo invertir y en qué broker?</h3>", unsafe_allow_html=True)
     p52h=df_1d["high"].max(); p52l=df_1d["low"].min()
@@ -1006,25 +1019,27 @@ with t4:
     for i,item in enumerate(conclusiones):
         icon,title,label,color,desc=item
         with cols_c[i%2]:
-            st.markdown(f"""
+            _chtml = f"""
             <div style='background:#0d1117;border:1px solid #1f2937;border-left:3px solid {color};border-radius:6px;padding:12px;margin-bottom:10px;'>
               <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;'>
                 <span style='color:#fff;font-size:12px;font-weight:600;'>{icon} {title}</span>
                 <span style='background:{color}20;color:{color};padding:2px 7px;border-radius:3px;font-size:9px;font-family:Space Mono;font-weight:700;'>{label}</span>
               </div>
               <div style='color:#6b7280;font-size:11px;line-height:1.7;'>{desc}</div>
-            </div>""", unsafe_allow_html=True)
+            </div>"""
+            components.html(_chtml, height=230, scrolling=False)
 
     s=sig["strength"]
     if s>=70: fc_title,fc_color,fc_desc="COMPRAR AHORA","#00ff9d",f"Múltiples señales alineadas. Entra con ${invest_amt:,.2f} en {broker_recom}. TP: ${proj_tp:,.4f} · SL: ${proj_sl:,.4f}"
     elif s>=55: fc_title,fc_color,fc_desc="CONDICIONES FAVORABLES","#ffd60a",f"Señales positivas pero no todas confirmadas. Considera 50% del monto Kelly (${invest_amt/2:,.2f}) en {broker_recom}."
     elif s>=40: fc_title,fc_color,fc_desc="ESPERAR MEJOR MOMENTO","#ffd60a","Señales divididas. No hay ventaja estadística clara. Paciencia."
     else: fc_title,fc_color,fc_desc="NO ENTRAR / PROTEGER POSICIÓN","#ff4d6d",f"Presión bajista dominante. Si tienes posición, protege con SL en ${proj_sl:,.4f}."
-    st.markdown(f"""
+    _chtml = f"""
     <div style='background:{fc_color}15;border:2px solid {fc_color};border-radius:8px;padding:16px;margin-top:6px;'>
       <div style='color:{fc_color};font-family:Space Mono;font-size:13px;font-weight:700;margin-bottom:6px;'>{"🚀" if s>=70 else "👍" if s>=55 else "⏸️" if s>=40 else "🛑"} CONCLUSIÓN: {fc_title}</div>
       <div style='color:#9ca3af;font-size:12px;line-height:1.7;'>{fc_desc}</div>
-    </div>""", unsafe_allow_html=True)
+    </div>"""
+    components.html(_chtml, height=230, scrolling=False)
 
 # ── TAB 5: MIS INVERSIONES ─────────────────────────────────────────────────────
 with t5:
@@ -1033,7 +1048,7 @@ with t5:
     proj_sl_pct=round((price_now-proj_sl)/price_now*100,2)
     rr=round(proj_tp_pct/proj_sl_pct,2) if proj_sl_pct>0 else 0
 
-    st.markdown(f"""
+    _chtml = f"""
     <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:16px;margin-bottom:14px;'>
       <div style='color:#4b5563;font-size:9px;letter-spacing:2px;margin-bottom:12px;'>PROYECCIÓN MODELO — {symbol}</div>
       <div style='display:grid;grid-template-columns:repeat(5,1fr);gap:10px;font-family:Space Mono;text-align:center;'>
@@ -1061,7 +1076,8 @@ with t5:
           <div style='color:#0ea5e9;font-size:11px;font-weight:700;'>{broker_recom.split("(")[0]}</div>
         </div>
       </div>
-    </div>""",unsafe_allow_html=True)
+    </div>"""
+    components.html(_chtml, height=160, scrolling=False)
 
     with st.expander("➕ Registrar inversión",expanded=len(st.session_state.trades)==0):
         fc1,fc2,fc3=st.columns(3)
@@ -1077,14 +1093,15 @@ with t5:
         tnotes=st.text_input("Notas",placeholder="Razón de entrada...",key="tnotes")
         tp_p=round(tbp*(1+ttp/100),4); sl_p=round(tbp*(1-tsl/100),4)
         inv_t=round(tbp*tsh,2); gan=round((tp_p-tbp)*tsh,2); per=round((tbp-sl_p)*tsh,2)
-        st.markdown(f"""<div style='background:#060a0f;border:1px solid #1f2937;border-radius:6px;padding:10px;margin:8px 0;
+        _ch = f"""<div style='background:#060a0f;border:1px solid #1f2937;border-radius:6px;padding:10px;margin:8px 0;
                     display:grid;grid-template-columns:repeat(5,1fr);gap:6px;font-family:Space Mono;font-size:11px;text-align:center;'>
           <div><div style='color:#4b5563;font-size:9px;'>INVERTIDO</div><div style='color:#fff;'>${inv_t:,.2f}</div></div>
           <div><div style='color:#4b5563;font-size:9px;'>TP</div><div style='color:#00ff9d;'>${tp_p:,.4f}</div></div>
           <div><div style='color:#4b5563;font-size:9px;'>SL</div><div style='color:#ff4d6d;'>${sl_p:,.4f}</div></div>
           <div><div style='color:#4b5563;font-size:9px;'>GANANCIA POT.</div><div style='color:#00ff9d;'>+${gan:,.2f}</div></div>
           <div><div style='color:#4b5563;font-size:9px;'>PÉRDIDA POT.</div><div style='color:#ff4d6d;'>-${per:,.2f}</div></div>
-        </div>""",unsafe_allow_html=True)
+        </div>"""
+        components.html(_ch, height=720, scrolling=False)
         if st.button("✅ Registrar",key="btn_add"):
             add_trade(ts,tbp,tsh,tbd,ttp,tsl,tnotes); st.success("✅ Registrada."); st.rerun()
 
@@ -1147,7 +1164,7 @@ with t5:
 
                 rt=trade["tp_price"]-trade["sl_price"]; prog=max(0,min(1,(cp-trade["sl_price"])/rt)) if rt>0 else 0.5
                 barra_color = "#00ff9d" if prog>0.6 else ("#ffd60a" if prog>0.3 else "#ff4d6d")
-                st.markdown(f"""
+                _ch = f"""
                 <div style='background:#0d1117;border:1px solid {ac}40;border-left:4px solid {ac};border-radius:10px;padding:16px;margin-bottom:10px;'>
                   <div style='display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;'>
                     <div>
@@ -1181,7 +1198,8 @@ with t5:
                     </div>
                   </div>
                   <div style='background:{ac}15;border:1px solid {ac}40;border-radius:6px;padding:8px 12px;font-size:11px;color:{ac};'>{am}</div>
-                </div>""",unsafe_allow_html=True)
+                </div>"""
+                components.html(_ch, height=800, scrolling=False)
                 with st.expander(f"Cerrar {trade['symbol']}"):
                     sc1,sc2=st.columns(2)
                     with sc1: sp=st.number_input("Precio venta",min_value=0.0001,value=float(round(cp,4)),step=0.0001,format="%.4f",key=f"sp{oi}")
@@ -1203,12 +1221,13 @@ with t6:
     cfg2=st.session_state.email_config
 
     with st.expander("📖 Cómo configurar Gmail",expanded=not cfg2.get("active")):
-        st.markdown("""
+        _ch = """
         <div style='background:#0d1117;border:1px solid #1f2937;border-radius:8px;padding:16px;font-size:12px;color:#9ca3af;line-height:1.9;'>
         <b style='color:#ffd60a;'>Paso 1:</b> gmail.com → Configuración → Seguridad → Verificación en 2 pasos → Activar<br>
         <b style='color:#ffd60a;'>Paso 2:</b> myaccount.google.com/apppasswords → "Otra" → "QuantumTrade" → Generar código 16 letras<br>
         <b style='color:#ffd60a;'>Paso 3:</b> Pega ese código en "Contraseña de aplicación" abajo y activa las alertas
-        </div>""",unsafe_allow_html=True)
+        </div>"""
+        components.html(_ch, height=120, scrolling=False)
 
     col_form, col_status = st.columns([1,1])
     with col_form:
@@ -1255,7 +1274,7 @@ with t6:
         secs_left2=max(0,SCAN_INTERVAL-(time.time()-st.session_state.last_scan_time))
         pct2=int((1-secs_left2/SCAN_INTERVAL)*100)
         ultimo=datetime.fromtimestamp(st.session_state.last_scan_time).strftime("%H:%M:%S") if st.session_state.last_scan_time>0 else "Nunca"
-        st.markdown(f"""
+        _ch = f"""
         <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:16px;'>
           <div style='display:flex;align-items:center;gap:8px;margin-bottom:14px;'>
             <div style='width:10px;height:10px;border-radius:50%;background:{sc_color};{"box-shadow:0 0 10px "+sc_color if sca else ""};'></div>
@@ -1285,7 +1304,8 @@ with t6:
             🎯 <b style='color:#ffd60a;'>TP/SL</b> → tus posiciones con acción urgente<br>
             📧 Solo envía cuando la señal cambia
           </div>
-        </div>""",unsafe_allow_html=True)
+        </div>"""
+        components.html(_ch, height=760, scrolling=False)
 
         c_sc1,c_sc2,c_sc3=st.columns(3)
         with c_sc1:
@@ -1324,7 +1344,7 @@ with t6:
             r_razon=r.get("razon","")      # ← CORRECCIÓN: era r["reason"], clave no existía
             r_time=r.get("time","")         # ← CORRECCIÓN: uso seguro con .get()
             r_type=r.get("type","")
-            st.markdown(f"""
+            _ch = f"""
             <div style='background:#060a0f;border-left:3px solid {r_color};border-radius:0 6px 6px 0;
                         padding:8px 14px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;'>
               <div>
@@ -1335,17 +1355,19 @@ with t6:
                 <div style='color:#6b7280;font-size:10px;margin-top:2px;'>{r_razon}</div>
               </div>
               <span style='color:#374151;font-family:Space Mono;font-size:10px;'>{r_time}</span>
-            </div>""",unsafe_allow_html=True)
+            </div>"""
+            components.html(_ch, height=200, scrolling=False)
 
 # ── TAB 7: BROKERS ─────────────────────────────────────────────────────────────
 with t7:
     st.markdown("### 🏦 Brokers — Cuál usar según lo que quieres invertir", unsafe_allow_html=True)
-    st.markdown(f"""
+    _ch = f"""
     <div style='background:linear-gradient(135deg,#00ff9d10,#0ea5e910);border:2px solid #00ff9d50;border-radius:12px;padding:18px;margin-bottom:16px;'>
       <div style='color:#00ff9d;font-size:10px;letter-spacing:2px;font-weight:700;margin-bottom:8px;'>⭐ PARA {symbol} LA APP RECOMIENDA</div>
       <div style='color:#fff;font-size:20px;font-weight:700;margin-bottom:4px;'>{broker_recom}</div>
       <div style='color:#9ca3af;font-size:12px;'>Tipo de activo: {info["tipo"]} · Sector: {info["sector"]} · Riesgo: {info["riesgo"]}</div>
-    </div>""",unsafe_allow_html=True)
+    </div>"""
+    components.html(_ch, height=240, scrolling=False)
 
     cl1,cl2=st.columns(2)
     pal2=["#00ff9d","#0ea5e9","#ffd60a","#a78bfa","#f97316","#ec4899"]
@@ -1356,7 +1378,7 @@ with t7:
             stars="".join([f'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:{""+bc if j<int(binfo["rating"]) else "#1f2937"};margin-right:2px;"></span>' for j in range(10)])
             col_badge="✅ Colombia" if binfo["colombia"] else "⚠️ Limitado"
             col_color="#00ff9d" if binfo["colombia"] else "#ffd60a"
-            st.markdown(f"""
+            _ch = f"""
             <div style='background:#0d1117;border:1px solid #1f2937;border-top:3px solid {bc};border-radius:10px;padding:16px;margin-bottom:14px;'>
               <div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;'>
                 <div>
@@ -1375,9 +1397,10 @@ with t7:
               <div style='color:#6b7280;font-size:10px;margin-bottom:8px;'>Activos: {activos_html}</div>
               <div style='background:#060a0f;border:1px solid #0ea5e930;border-radius:4px;padding:7px 10px;font-size:11px;color:#0ea5e9;margin-bottom:8px;'>💡 {binfo["tip"]}</div>
               <div>{stars}</div>
-            </div>""",unsafe_allow_html=True)
+            </div>"""
+            components.html(_ch, height=520, scrolling=False)
 
-    st.markdown("""
+    _ch = """
     <div style='background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-top:4px;'>
       <div style='color:#ffd60a;font-size:13px;font-weight:700;margin-bottom:12px;'>🗺️ Guía rápida: ¿En cuál broker compro cada cosa?</div>
       <table width='100%' style='border-collapse:collapse;font-size:11px;'>
@@ -1398,7 +1421,8 @@ with t7:
     </div>
     <div style='background:#ff4d6d10;border:1px solid #ff4d6d30;border-radius:8px;padding:12px;margin-top:10px;font-size:11px;color:#6b7280;'>
       ⚠️ Herramienta educativa. No constituye asesoría financiera certificada. Toda inversión conlleva riesgo.
-    </div>""",unsafe_allow_html=True)
+    </div>"""
+    components.html(_ch, height=400, scrolling=False)
 
 # ─── AUTO REFRESH ──────────────────────────────────────────────────────────────
 if auto_ref:
